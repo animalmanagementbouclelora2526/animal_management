@@ -1,5 +1,6 @@
 # Core Requirements
 Flask==2.3.2
+gunicorn
 Flask-MySQLdb==1.0.1
 Werkzeug==2.3.7
 python-dotenv==1.0.0
