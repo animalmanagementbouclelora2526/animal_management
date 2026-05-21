@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/university_logo.png') }}" alt="University Logo" class="logo">
+        </div>
+        <h1>Animal Management System</h1>
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/university_logo.png') }}" alt="University Logo" class="logo">
+        </div>
+    </header>
+    
+    <nav>
+        {% if 'user_id' in session %}
+            <a href="{{ url_for('index') }}">Home</a>
+            {% if session['role'] == 'admin' %}
+                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('admin_requests') }}">Registration Requests</a>
+            {% else %}
+                <a href="{{ url_for('eleveur_dashboard') }}">Dashboard</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('register_request') }}">Register</a>
+        {% endif %}
+    </nav>
+    
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <p>&copy; 2024 University of Sidi Bel Abbes - Animal Management System</p>
+    </footer>
+</body>
+</html>        

@@ -1,0 +1,22 @@
+# Core Requirements
+Flask==2.3.2
+Flask-MySQLdb==1.0.1
+Werkzeug==2.3.7
+python-dotenv==1.0.0
+
+# Database
+# mysqlclient==2.2.0
+pymysql
+SQLAlchemy==2.0.20
+
+# Security
+passlib==1.7.4
+bcrypt==4.0.1
+
+# Email
+flask-mail==0.9.1
+pyjwt==2.8.0
+
+# Development (optional)
+Flask-DebugToolbar==0.13.1
+pytest==7.4.0

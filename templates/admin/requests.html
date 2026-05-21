@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="admin-requests">
+        <h2>Registration Requests</h2>
+        
+        <div class="requests-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>First Name</th>
+                        <th>Email</th>
+                        <th>Card Number</th>
+                        <th>Request Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                        <tr>
+                            <td>{{ req.ID }}</td>
+                            <td>{{ req.Name }}</td>
+                            <td>{{ req.First_name }}</td>
+                            <td>{{ req.Email }}</td>
+                            <td>{{ req.Card_number }}</td>
+                            <td>{{ req.Request_date }}</td>
+                            <td>
+                                <a href="{{ url_for('process_request', request_id=req.ID, action='accept') }}" class="btn btn-success">Accept</a>
+                                <a href="{{ url_for('process_request', request_id=req.ID, action='reject') }}" class="btn btn-danger">Reject</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %} 

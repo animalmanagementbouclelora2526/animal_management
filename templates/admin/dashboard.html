@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="admin-dashboard">
+        <h2>Admin Dashboard</h2>
+        
+        <div class="breeders-list">
+            <h3>Registered Breeders</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Animals Count</th>
+                        <th>Last Sync</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for eleveur in eleveurs %}
+                        <tr>
+                            <td>{{ eleveur.Eleveur_ID }}</td>
+                            <td>{{ eleveur.Username }}</td>
+                            <td>{{ eleveur.Email }}</td>
+                            <td>{{ eleveur.animal_count }}</td>
+                            <td>{{ eleveur.last_sync if eleveur.last_sync else 'Never' }}</td>             
+                            <td>
+                            <a href="{{ url_for('breeder_animals', breeder_id=eleveur.Eleveur_ID) }}" 
+                            class="btn btn-view-animals">
+                            View Animals
+                            </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %} 

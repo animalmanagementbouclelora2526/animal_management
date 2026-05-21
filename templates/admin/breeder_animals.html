@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-animals">
+    <h2>Animals of Breeder: {{ breeder.Username }}</h2>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn">Back to Dashboard</a>
+    
+    <div class="animals-list">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>RFID Tag</th>
+                    <th>Category</th>
+                    <th>Gender</th>
+                    <th>Birth Date</th>
+                    <th>Vaccines</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for animal in animals %}
+                    <tr>
+                        <td>{{ animal.ID }}</td>
+                        <td>{{ animal.RFID_tag }}</td>
+                        <td>{{ animal.Category }}</td>
+                        <td>{{ animal.Gender }}</td>
+                        <td>{{ animal.Birth_date }}</td>
+                        <td>{{ animal.Vaccines }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6">No animals found for this breeder</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

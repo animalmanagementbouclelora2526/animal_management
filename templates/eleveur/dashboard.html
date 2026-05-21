@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="eleveur-dashboard">
+        <h2>Your Animals</h2>
+        
+        <div class="sync-section">
+            <button id="sync-btn" class="btn">Sync with RFID Device</button>
+            <button id="test-sync-btn" class="btn">Test Sync (Simulator)</button>
+        </div>
+        
+        <div class="animals-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>RFID Tag</th>
+                        <th>Category</th>
+                        <th>Gender</th>
+                        <th>Birth Date</th>
+                        <th>Vaccines</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for animal in animals %}
+                        <tr>
+                            <td>{{ animal.ID }}</td>
+                            <td>{{ animal.RFID_tag }}</td>
+                            <td>{{ animal.Category }}</td>
+                            <td>{{ animal.Gender }}</td>
+                            <td>{{ animal.Birth_date }}</td>
+                            <td>{{ animal.Vaccines }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6">No animals found. Please sync with your RFID device.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('test-sync-btn').addEventListener('click', function() {
+            fetch('{{ url_for("simulate_sync") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Sync test successful! Refresh to see changes.');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+    </script>
+{% endblock %} 
