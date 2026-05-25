@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from flask_mysqldb import MySQL
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
@@ -8,18 +7,29 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import string
+import gspread
+from google.oauth2.service_account import Credentials
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = Credentials.from_service_account_file(
+    "credentials.json",
+    scopes=SCOPES
+)
+
+client = gspread.authorize(creds)
+spreadsheet = client.open("Animal_management")
+
+users_sheet = spreadsheet.worksheet("Users")
+requests_sheet = spreadsheet.worksheet("Registration_requests")
+animals_sheet = spreadsheet.worksheet("Animal")
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-# MySQL Configuration
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '07No1986/'
-app.config['MYSQL_DB'] = 'Animal_management'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-
-mysql = MySQL(app)
 
 # Email Configuration
 EMAIL_ADDRESS = 'ahmed.hadji2219@gmail.com'
@@ -63,10 +73,15 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM Users WHERE Username = %s", (username,))
-        user = cur.fetchone()
-        cur.close()
+       
+        users = users_sheet.get_all_records()
+
+        user = None
+
+        for u in users:
+           if u['Username'] == username:
+                user = u
+                break
         
         if user:
             # Debug print (remove after testing)
@@ -99,18 +114,25 @@ def register_request():
         email = request.form['email']
         card_number = request.form['card_number']
         
-        cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO Registration_requests (Name, First_name, Email, Card_number) VALUES (%s, %s, %s, %s)",
-                    (name, first_name, email, card_number))
-        mysql.connection.commit()
-        cur.close()
+    
+        requests_sheet.append_row([
+            len(requests_sheet.get_all_records()) + 1,
+            name,
+            first_name,
+            email,
+            card_number,
+            'en attente',
+            str(datetime.now())
+        ])
         
         # Send notification email to admin
         admin_emails = []
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT Email FROM Users WHERE Role = 'admin'")
-        admins = cur.fetchall()
-        cur.close()
+      
+        admins = []
+
+        for user in users_sheet.get_all_records():
+            if user['Role'] == 'admin':
+                admins.append(user)
         
         for admin in admins:
             admin_emails.append(admin['Email'])
@@ -130,207 +152,227 @@ def register_request():
 def admin_dashboard():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
-    
-    cur = mysql.connection.cursor()
-    
-    # Get all eleveurs and their animals
-    cur.execute("""
-        SELECT u.Eleveur_ID, u.Username, u.Email, 
-               COUNT(a.ID) as animal_count,
-               MAX(a.Last_sync) as last_sync
-        FROM Users u
-        LEFT JOIN Animal a ON u.Eleveur_ID = a.Eleveur_ID
-        WHERE u.Role = 'éleveur'
-        GROUP BY u.Eleveur_ID
-    """)
-    eleveurs = cur.fetchall()
-    
-    cur.close()
+
+    users = users_sheet.get_all_records()
+    animals = animals_sheet.get_all_records()
+
+    eleveurs = []
+
+    for user in users:
+        if user['Role'] == 'éleveur':
+
+            animal_count = 0
+            last_sync = ""
+
+            for animal in animals:
+                if str(animal['Eleveur_ID']) == str(user['Eleveur_ID']):
+                    animal_count += 1
+                    last_sync = animal['Last_sync']
+
+            eleveurs.append({
+                'Eleveur_ID': user['Eleveur_ID'],
+                'Username': user['Username'],
+                'Email': user['Email'],
+                'animal_count': animal_count,
+                'last_sync': last_sync
+            })
+
     return render_template('admin/dashboard.html', eleveurs=eleveurs)
 
 @app.route('/admin/requests')
 def admin_requests():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
-    
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM Registration_requests WHERE Status = 'en attente'")
-    requests = cur.fetchall()
-    cur.close()
-    
+
+    requests = []
+
+    all_requests = requests_sheet.get_all_records()
+
+    for req in all_requests:
+        if req['Status'] == 'en attente':
+            requests.append(req)
+
     return render_template('admin/requests.html', requests=requests)
 
 @app.route('/admin/process_request/<int:request_id>/<action>')
 def process_request(request_id, action):
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
-    
-    cur = mysql.connection.cursor()
-    
-    # Get the request
-    cur.execute("SELECT * FROM Registration_requests WHERE ID = %s", (request_id,))
-    req = cur.fetchone()
-    
+
+    requests = requests_sheet.get_all_records()
+
+    req = None
+    row_index = None
+
+    for index, r in enumerate(requests, start=2):
+        if int(r['ID']) == request_id:
+            req = r
+            row_index = index
+            break
+
     if not req:
         flash('Request not found', 'danger')
         return redirect(url_for('admin_requests'))
-    
+
     if action == 'accept':
-        # Generate username and password
+
         username = req['First_name'][0].lower() + req['Name'].lower()
         password = generate_password()
-        
-        # Check if username already exists
-        cur.execute("SELECT * FROM Users WHERE Username = %s", (username,))
-        if cur.fetchone():
-            # Add a number if username exists
-            counter = 1
-            while True:
-                new_username = f"{username}{counter}"
-                cur.execute("SELECT * FROM Users WHERE Username = %s", (new_username,))
-                if not cur.fetchone():
-                    username = new_username
-                    break
-                counter += 1
-        
-        # Create user
+
+        users = users_sheet.get_all_records()
+
+        existing_usernames = [u['Username'] for u in users]
+
+        counter = 1
+        original_username = username
+
+        while username in existing_usernames:
+            username = f"{original_username}{counter}"
+            counter += 1
+
         hashed_password = generate_password_hash(password)
-        cur.execute("""
-            INSERT INTO Users (Username, Password, Role, Email)
-            VALUES (%s, %s, 'éleveur', %s)
-        """, (username, hashed_password, req['Email']))
-        mysql.connection.commit()
-        
-        # Update request status
-        cur.execute("""
-            UPDATE Registration_requests 
-            SET Status = 'accepté' 
-            WHERE ID = %s
-        """, (request_id,))
-        mysql.connection.commit()
-        
-        # Send email to the new user
+
+        new_id = len(users) + 1
+
+        users_sheet.append_row([
+            new_id,
+            username,
+            hashed_password,
+            'éleveur',
+            req['Email']
+        ])
+
+        requests_sheet.update_cell(row_index, 6, 'accepté')
+
         subject = "Your Registration Has Been Approved"
-        body = f"""Dear {req['First_name']} {req['Name']},
-        
-Your registration request has been approved. Here are your login credentials:
+
+        body = f"""
+Dear {req['First_name']} {req['Name']},
+
+Your registration request has been approved.
 
 Username: {username}
 Password: {password}
 
-Please log in to the system and change your password as soon as possible.
-
 Best regards,
-Animal Management System Team"""
-        
+Animal Management System Team
+"""
+
         send_email(req['Email'], subject, body)
-        
+
         flash('Request approved and user created', 'success')
-    
+
     elif action == 'reject':
-        # Update request status
-        cur.execute("""
-            UPDATE Registration_requests 
-            SET Status = 'refusé' 
-            WHERE ID = %s
-        """, (request_id,))
-        mysql.connection.commit()
-        
-        # Send email to the requester
+
+        requests_sheet.update_cell(row_index, 6, 'refusé')
+
         subject = "Your Registration Has Been Rejected"
-        body = f"""Dear {req['First_name']} {req['Name']},
-        
+
+        body = f"""
+Dear {req['First_name']} {req['Name']},
+
 We regret to inform you that your registration request has been rejected.
 
-If you believe this is a mistake, please contact the administrator.
-
 Best regards,
-Animal Management System Team"""
-        
+Animal Management System Team
+"""
+
         send_email(req['Email'], subject, body)
-        
+
         flash('Request rejected', 'info')
-    
-    cur.close()
+
     return redirect(url_for('admin_requests'))
 
 @app.route('/eleveur/dashboard')
 def eleveur_dashboard():
     if 'user_id' not in session or session['role'] != 'éleveur':
         return redirect(url_for('login'))
-    
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM Animal WHERE Eleveur_ID = %s", (session['user_id'],))
-    animals = cur.fetchall()
-    cur.close()
-    
+
+    animals = []
+
+    all_animals = animals_sheet.get_all_records()
+
+    for animal in all_animals:
+        if str(animal['Eleveur_ID']) == str(session['user_id']):
+            animals.append(animal)
+
     return render_template('eleveur/dashboard.html', animals=animals)
 
 @app.route('/sync_animals', methods=['POST'])
 def sync_animals():
+
     if 'user_id' not in session:
-        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
-    
+        return jsonify({
+            'status': 'error',
+            'message': 'Not authenticated'
+        }), 401
+
     data = request.json
     eleveur_id = session['user_id']
-    
+
     if not data or 'animals' not in data:
-        return jsonify({'status': 'error', 'message': 'Invalid data format'}), 400
-    
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid data format'
+        }), 400
+
     try:
-        cur = mysql.connection.cursor()
-        
-        # Delete all existing animals for this eleveur
-        cur.execute("DELETE FROM Animal WHERE Eleveur_ID = %s", (eleveur_id,))
-        
-        # Insert new animals
+
         for animal in data['animals']:
-            cur.execute("""
-                INSERT INTO Animal (RFID_tag, Category, Gender, Birth_date, Vaccines, Eleveur_ID)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
+
+            animals_sheet.append_row([
+                len(animals_sheet.get_all_records()) + 1,
                 animal['rfid_tag'],
                 animal['category'],
                 animal['gender'],
                 animal['birth_date'],
                 animal['vaccines'],
-                eleveur_id
-            ))
-        
-        mysql.connection.commit()
-        cur.close()
-        
-        return jsonify({'status': 'success', 'message': 'Animals synchronized successfully'})
-    
+                eleveur_id,
+                str(datetime.now())
+            ])
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Animals synchronized successfully'
+        })
+
     except Exception as e:
-        mysql.connection.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/admin/breeder_animals/<int:breeder_id>')
 def breeder_animals(breeder_id):
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
-    
-    cur = mysql.connection.cursor()
-    
-    # Get breeder info
-    cur.execute("SELECT Username FROM Users WHERE Eleveur_ID = %s", (breeder_id,))
-    breeder = cur.fetchone()
-    
-    # Get animals
-    cur.execute("""
-        SELECT a.*, u.Username 
-        FROM Animal a
-        JOIN Users u ON a.Eleveur_ID = u.Eleveur_ID
-        WHERE a.Eleveur_ID = %s
-    """, (breeder_id,))
-    animals = cur.fetchall()
-    
-    cur.close()
-    
-    return render_template('admin/breeder_animals.html', 
-                         animals=animals, 
-                         breeder=breeder)
+
+    breeder = None
+
+    users = users_sheet.get_all_records()
+
+    for user in users:
+        if str(user['Eleveur_ID']) == str(breeder_id):
+            breeder = user
+            break
+
+    animals = []
+
+    all_animals = animals_sheet.get_all_records()
+
+    for animal in all_animals:
+        if str(animal['Eleveur_ID']) == str(breeder_id):
+
+            animal['Username'] = breeder['Username']
+
+            animals.append(animal)
+
+    return render_template(
+        'admin/breeder_animals.html',
+        animals=animals,
+        breeder=breeder
+    )
 
 
 @app.route('/logout')
@@ -378,22 +420,26 @@ def simulate_sync():
 
 # Monthly email notification job (would typically be set up as a cron job)
 def send_monthly_notifications():
+
     with app.app_context():
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT Email FROM Users WHERE Role = 'éleveur'")
-        eleveurs = cur.fetchall()
-        cur.close()
-        
+
+        eleveurs = []
+
+        for user in users_sheet.get_all_records():
+            if user['Role'] == 'éleveur':
+                eleveurs.append(user)
+
         subject = "Monthly Reminder: Synchronize Your Animals"
+
         body = """Dear Eleveur,
-        
+
 This is a monthly reminder to synchronize your animal data with the central database.
 
 Please ensure all your animals' information is up to date.
 
 Best regards,
 Animal Management System Team"""
-        
+
         for eleveur in eleveurs:
             send_email(eleveur['Email'], subject, body)
 
