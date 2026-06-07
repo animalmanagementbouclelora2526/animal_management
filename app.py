@@ -150,14 +150,20 @@ def register_request():
         return redirect(url_for('index'))
     
     return render_template('register.html')
-
+##############################################################################################################################################
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
     users = users_sheet.get_all_records()
+    print("=== USERS ===")
+    for user in users[:3]:
+        print(user)
     animals = animals_sheet.get_all_records()
+    print("=== ANIMALS ===")
+    for animal in animals[:3]:
+        print(animal)
 
     eleveurs = []
 
@@ -168,20 +174,23 @@ def admin_dashboard():
             last_sync = ""
 
             for animal in animals:
-                if str(animal['Eleveur_ID']) == str(user['Eleveur_ID']):
+
+                if str(animal.get('FarmerID', '')) == str(user.get('Eleveur_ID', '')):
                     animal_count += 1
-                    last_sync = animal['Last_sync']
+                    last_sync = animal.get('LastSync', '')
 
             eleveurs.append({
-                'Eleveur_ID': user['Eleveur_ID'],
-                'Username': user['Username'],
-                'Email': user['Email'],
+                'Eleveur_ID': user.get('Eleveur_ID', ''),
+                'Username': user.get('Username', ''),
+                'Email': user.get('Email', ''),
                 'animal_count': animal_count,
                 'last_sync': last_sync
             })
 
-    return render_template('admin/dashboard.html', eleveurs=eleveurs)
-
+    return render_template(
+        'admin/dashboard.html',
+        eleveurs=eleveurs
+    )
 @app.route('/admin/requests')
 def admin_requests():
     if 'user_id' not in session or session['role'] != 'admin':
@@ -285,9 +294,10 @@ Animal Management System Team
         flash('Request rejected', 'info')
 
     return redirect(url_for('admin_requests'))
-
+###################################################################################################################
 @app.route('/eleveur/dashboard')
 def eleveur_dashboard():
+
     if 'user_id' not in session or session['role'] != 'éleveur':
         return redirect(url_for('login'))
 
@@ -296,11 +306,14 @@ def eleveur_dashboard():
     all_animals = animals_sheet.get_all_records()
 
     for animal in all_animals:
-        if str(animal['Eleveur_ID']) == str(session['user_id']):
+
+        if str(animal.get('FarmerID', '')) == str(session['user_id']):
             animals.append(animal)
 
-    return render_template('eleveur/dashboard.html', animals=animals)
-
+    return render_template(
+        'eleveur/dashboard.html',
+        animals=animals
+    )
 @app.route('/sync_animals', methods=['POST'])
 def sync_animals():
 
@@ -325,11 +338,15 @@ def sync_animals():
 
             animals_sheet.append_row([
                 len(animals_sheet.get_all_records()) + 1,
-                animal['rfid_tag'],
+                animal['MAC'],
                 animal['category'],
                 animal['gender'],
                 animal['birth_date'],
                 animal['vaccines'],
+                animal['Positions_Hist LAT|LOG'],
+                animal['Battery_status'],
+                animal['Aler_Hist'],
+                animal['Animal_status'],
                 eleveur_id,
                 str(datetime.now())
             ])
@@ -345,9 +362,10 @@ def sync_animals():
             'status': 'error',
             'message': str(e)
         }), 500
-
+##########################################################################################################################
 @app.route('/admin/breeder_animals/<int:breeder_id>')
 def breeder_animals(breeder_id):
+
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
@@ -356,7 +374,7 @@ def breeder_animals(breeder_id):
     users = users_sheet.get_all_records()
 
     for user in users:
-        if str(user['Eleveur_ID']) == str(breeder_id):
+        if str(user.get('Eleveur_ID', '')) == str(breeder_id):
             breeder = user
             break
 
@@ -365,9 +383,10 @@ def breeder_animals(breeder_id):
     all_animals = animals_sheet.get_all_records()
 
     for animal in all_animals:
-        if str(animal['Eleveur_ID']) == str(breeder_id):
 
-            animal['Username'] = breeder['Username']
+        if str(animal.get('FarmerID', '')) == str(breeder_id):
+
+            animal['Username'] = breeder.get('Username', '') if breeder else ''
 
             animals.append(animal)
 
@@ -376,7 +395,6 @@ def breeder_animals(breeder_id):
         animals=animals,
         breeder=breeder
     )
-
 
 @app.route('/logout')
 def logout():
