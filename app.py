@@ -387,17 +387,19 @@ def breeder_animals(breeder_id):
         if str(animal.get('Farmer_ID', '')) == str(breeder_id):
 
             animal['Username'] = breeder.get('Username', '') if breeder else ''
-            for animal in all_animals:
-                print("ANIMAL =", animal)
+
+            print("ANIMAL =", animal)
 
             animals.append(animal)
+
+    print("ANIMALS FINAL =", animals)
 
     return render_template(
         'admin/breeder_animals.html',
         animals=animals,
         breeder=breeder
     )
-
+    
 @app.route('/logout')
 def logout():
     session.clear()
