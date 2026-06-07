@@ -338,15 +338,15 @@ def sync_animals():
 
             animals_sheet.append_row([
                 len(animals_sheet.get_all_records()) + 1,
-                animal['MAC'],
+                animal['mac'],
                 animal['category'],
                 animal['gender'],
                 animal['birth_date'],
                 animal['vaccines'],
-                animal['Positions_Hist LAT|LOG'],
-                animal['Battery_status'],
-                animal['Aler_Hist'],
-                animal['Animal_status'],
+                animal['position'],
+                animal['battery'],
+                animal['alert'],
+                animal['status'],
                 eleveur_id,
                 str(datetime.now())
             ])
