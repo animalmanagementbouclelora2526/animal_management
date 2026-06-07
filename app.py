@@ -387,6 +387,8 @@ def breeder_animals(breeder_id):
         if str(animal.get('Farmer_ID', '')) == str(breeder_id):
 
             animal['Username'] = breeder.get('Username', '') if breeder else ''
+            for animal in all_animals:
+                print("ANIMAL =", animal)
 
             animals.append(animal)
 
