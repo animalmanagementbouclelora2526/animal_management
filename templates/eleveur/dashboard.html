@@ -14,11 +14,15 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>RFID Tag</th>
+                        <th>Lora Tag</th>
                         <th>Category</th>
                         <th>Gender</th>
                         <th>Birth Date</th>
                         <th>Vaccines</th>
+                        <th>Positions History </th>
+                        <th>Battery status</th>
+                        <th>Alert History</th>
+                        <th>Animal status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30,6 +34,10 @@
                         <td>{{ animal.Gender }}</td>
                         <td>{{ animal.Birth_date }}</td>
                         <td>{{ animal.Vaccines }}</td>
+                        <td>{{ animal.position }}</td>
+                        <td>{{ animal.battery }}</td>
+                        <td>{{ animal.alert }}</td>
+                        <td>{{ animal.status }}</td>
                     </tr>
                     {% else %}
                     <tr>
