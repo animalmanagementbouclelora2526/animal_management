@@ -343,10 +343,10 @@ def sync_animals():
                 animal['gender'],
                 animal['birth_date'],
                 animal['vaccines'],
-                animal['position'],
-                animal['battery'],
-                animal['alert'],
-                animal['status'],
+                animal['Positions_Hist LAT|LOG'],
+                animal['Battery_status'],
+                animal['Aler_Hist'],
+                animal['Animal_status'],
                 eleveur_id,
                 str(datetime.now())
             ])
