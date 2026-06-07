@@ -23,18 +23,20 @@
                 </thead>
                 <tbody>
                     {% for animal in animals %}
-                        <tr>
-                            <td>{{ animal.ID }}</td>
-                            <td>{{ animal.RFID_tag }}</td>
-                            <td>{{ animal.Category }}</td>
-                            <td>{{ animal.Gender }}</td>
-                            <td>{{ animal.Birth_date }}</td>
-                            <td>{{ animal.Vaccines }}</td>
-                        </tr>
+                    <tr>
+                        <td>{{ animal.ID }}</td>
+                        <td>{{ animal.MAC }}</td>
+                        <td>{{ animal.Category }}</td>
+                        <td>{{ animal.Gender }}</td>
+                        <td>{{ animal.Birth_date }}</td>
+                        <td>{{ animal.Vaccines }}</td>
+                    </tr>
                     {% else %}
-                        <tr>
-                            <td colspan="6">No animals found. Please sync with your RFID device.</td>
-                        </tr>
+                    <tr>
+                        <td colspan="6">
+                            No animals found. Please sync with your RFID device.
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
