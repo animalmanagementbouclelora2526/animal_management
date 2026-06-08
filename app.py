@@ -341,7 +341,7 @@ def sync_animals():
                 animal['mac'],
                 animal['category'],
                 animal['gender'],
-                animal['birth_date'],
+                animal['Birth_date'],
                 animal['vaccines'],
                 animal['Latitude'],
                 animal['Longitude'],
