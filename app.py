@@ -175,7 +175,7 @@ def admin_dashboard():
 
             for animal in animals:
 
-                if str(animal.get('FarmerID', '')) == str(user.get('Eleveur_ID', '')):
+                if str(animal.get('Farmer_ID', '')).strip() == str(user.get('Eleveur_ID', '')):
                     animal_count += 1
                     last_sync = animal.get('Last_Sync', '')
 
@@ -307,7 +307,7 @@ def eleveur_dashboard():
 
     for animal in all_animals:
 
-        if str(animal.get('FarmerID', '')) == str(session['user_id']):
+        if str(animal.get('Farmer_ID', '')).strip() == str(session['user_id']):
             animals.append(animal)
 
     return render_template(
