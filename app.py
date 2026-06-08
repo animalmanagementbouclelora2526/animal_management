@@ -393,11 +393,6 @@ def breeder_animals(breeder_id):
             print("MATCH FOUND")
 
             animal['Username'] = breeder.get('Username', '') if breeder else ''
-            history = animal.get('PositionHistory', '')
-            if history and history != 'EMPTY':
-                animal['PositionList'] = history.split(';')
-            else:
-                animal['PositionList'] = []
 
             animals.append(animal)
 
