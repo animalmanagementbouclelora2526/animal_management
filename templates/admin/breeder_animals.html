@@ -31,10 +31,15 @@
                         <td>{{ animal.Birth_date }}</td>
                         <td>{{ animal.Vaccines }}</td>
                         <td>
-                            <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
-                                target="_blank">
-                                https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}
-                            </a>
+                            {% if animal.PositionList %}
+                            {% for pos in animal.PositionList %}
+                            <a href="{{ pos }}" target="_blank">
+                                Position {{ loop.index }}
+                            </a><br>
+                            {% endfor %}
+                            {% else %}
+                            No Position
+                            {% endif %}
                         </td>
                         <td>{{ animal['Battery_status'] }}</td>
                         <td>{{ animal['Aler_Hist'] }}</td>
