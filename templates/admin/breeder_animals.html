@@ -31,7 +31,10 @@
                         <td>{{ animal.BirthDate }}</td>
                         <td>{{ animal.Vaccines }}</td>
                         <td>
-                            https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}
+                            <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
+                                target="_blank">
+                                https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}
+                            </a>
                         </td>
                         <td>{{ animal['Battery_status'] }}</td>
                         <td>{{ animal['Aler_Hist'] }}</td>
