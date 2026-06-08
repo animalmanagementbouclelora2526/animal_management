@@ -375,7 +375,7 @@ def breeder_animals(breeder_id):
     users = users_sheet.get_all_records()
 
     for user in users:
-        if str(animal.get('FarmerID', animal.get('Farmer_ID', ''))) == str(breeder_id):
+        if str(user.get('Eleveur_ID', '')) == str(breeder_id):
             breeder = user
             break
 
@@ -383,13 +383,17 @@ def breeder_animals(breeder_id):
 
     all_animals = animals_sheet.get_all_records()
 
+    print("BREEDER_ID =", breeder_id)
+
     for animal in all_animals:
 
-        if str(animal.get('Farmer_ID', '')) == str(breeder_id):
+        print("FARMER_ID =", animal.get('Farmer_ID'))
+
+        if str(animal.get('Farmer_ID', '')).strip() == str(breeder_id):
+
+            print("MATCH FOUND")
 
             animal['Username'] = breeder.get('Username', '') if breeder else ''
-
-            print("ANIMAL =", animal)
 
             animals.append(animal)
 
