@@ -1,1 +1,135 @@
+{% extends "base.html" %}
 
+{% block content %}
+
+<div class="animal-details">
+
+    <h2>Animal Details</h2>
+
+    <table>
+
+        <tr>
+            <th>ID</th>
+            <td>{{ animal.ID }}</td>
+        </tr>
+
+        <tr>
+            <th>LoRa Tag</th>
+            <td>{{ animal.MAC }}</td>
+        </tr>
+
+        <tr>
+            <th>Category</th>
+            <td>{{ animal.Category }}</td>
+        </tr>
+
+        <tr>
+            <th>Gender</th>
+            <td>{{ animal.Gender }}</td>
+        </tr>
+
+        <tr>
+            <th>Birth Date</th>
+            <td>{{ animal.Birth_date }}</td>
+        </tr>
+
+        <tr>
+            <th>Vaccines</th>
+            <td>{{ animal.Vaccines }}</td>
+        </tr>
+
+        <tr>
+            <th>Current Position</th>
+            <td>
+                <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
+                   target="_blank">
+
+                    View Current Position
+
+                </a>
+            </td>
+        </tr>
+
+        <tr>
+            <th>Battery Status</th>
+
+            {% if animal['Battery_status']|int < 20 %}
+                <td style="color:red;">
+                    {{ animal['Battery_status'] }} %
+                </td>
+
+            {% elif animal['Battery_status']|int < 50 %}
+                <td style="color:orange;">
+                    {{ animal['Battery_status'] }} %
+                </td>
+
+            {% else %}
+                <td style="color:green;">
+                    {{ animal['Battery_status'] }} %
+                </td>
+            {% endif %}
+        </tr>
+
+        <tr>
+            <th>Alert History</th>
+
+            {% if animal['Animal_status']=="ALERTE" %}
+                <td style="color:red;">
+                    ⚠ {{ animal['Aler_Hist'] }}
+                </td>
+            {% else %}
+                <td>
+                    {{ animal['Aler_Hist'] }}
+                </td>
+            {% endif %}
+        </tr>
+
+        <tr>
+            <th>Animal Status</th>
+
+            {% if animal['Animal_status']=="ACTIVE" %}
+                <td style="color:green;">
+                    ACTIVE
+                </td>
+
+            {% elif animal['Animal_status']=="ALERTE" %}
+                <td style="color:red;">
+                    ALERTE
+                </td>
+
+            {% elif animal['Animal_status']=="MORT" %}
+                <td style="color:gray;">
+                    MORT
+                </td>
+
+            {% else %}
+                <td>
+                    {{ animal['Animal_status'] }}
+                </td>
+            {% endif %}
+        </tr>
+
+        <tr>
+            <th>Farmer ID</th>
+            <td>{{ animal.Farmer_ID }}</td>
+        </tr>
+
+        <tr>
+            <th>Last Sync</th>
+            <td>{{ animal.Last_Sync }}</td>
+        </tr>
+
+    </table>
+
+    <br>
+
+    <a href="{{ url_for('position_history', mac=animal.MAC) }}"
+       class="btn">
+
+        View Position History
+
+    </a>
+
+</div>
+
+{% endblock %}
