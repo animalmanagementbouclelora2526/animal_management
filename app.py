@@ -150,6 +150,31 @@ def register_request():
         return redirect(url_for('index'))
     
     return render_template('register.html')
+@app.route('/animal/<mac>')
+def animal_details(mac):
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    animals = animals_sheet.get_all_records()
+
+    animal = None
+
+    for a in animals:
+
+        if a['MAC'] == mac:
+
+            animal = a
+            break
+
+    if animal is None:
+        flash("Animal not found")
+        return redirect(url_for('dashboard'))
+
+    return render_template(
+        'animal_details.html',
+        animal=animal
+    )
 ##############################################################################################################################################
 @app.route('/admin/dashboard')
 def admin_dashboard():
