@@ -1,52 +1,190 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="admin-animals">
-    <h2>Animals of Breeder: {{ breeder.Username }}</h2>
-    <a href="{{ url_for('admin_dashboard') }}" class="btn">Back to Dashboard</a>
-    
-    <div class="animals-list">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Lora Tag</th>
-                    <th>Category</th>
-                    <th>Gender</th>
-                    <th>Birth Date</th>
-                    <th>Vaccines</th>
-                    <th>Positions History </th>
-                    <th>Battery status</th>
-                    <th>Alert History</th>
-                    <th>Animal status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for animal in animals %}
-                    <tr>
-                        <td>{{ animal.ID }}</td>
-                        <td>{{ animal.MAC }}</td>
-                        <td>{{ animal.Category }}</td>
-                        <td>{{ animal.Gender }}</td>
-                        <td>{{ animal.Birth_date }}</td>
-                        <td>{{ animal.Vaccines }}</td>
-                        <td>
-                            <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
-                                target="_blank">
-                                https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}
-                            </a>
-                        </td>
-                        <td>{{ animal['Battery_status'] }}</td>
-                        <td>{{ animal['Aler_Hist'] }}</td>
-                        <td>{{ animal['Animal_status'] }}</td>
-                    </tr>
+
+<div class="animals-page">
+
+    <h2>Animals of {{ breeder.Username }}</h2>
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>ID</th>
+                <th>LoRa Tag</th>
+                <th>Category</th>
+                <th>Gender</th>
+                <th>Birth Date</th>
+                <th>Vaccines</th>
+                <th>Current Position</th>
+                <th>Battery Status</th>
+                <th>Alert History</th>
+                <th>Animal Status</th>
+                <th>Last Sync</th>
+                <th>Actions</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+        {% for animal in animals %}
+
+            <tr>
+
+                <td>{{ animal.ID }}</td>
+
+                <td>{{ animal.MAC }}</td>
+
+                <td>{{ animal.Category }}</td>
+
+                <td>{{ animal.Gender }}</td>
+
+                <td>{{ animal.Birth_date }}</td>
+
+                <td>{{ animal.Vaccines }}</td>
+
+                <td>
+
+                    <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
+                       target="_blank">
+
+                        View Position
+
+                    </a>
+
+                </td>
+
+
+                <!-- Battery -->
+
+                {% if animal['Battery_status']|int < 20 %}
+
+                    <td style="color:red;font-weight:bold;">
+
+                        {{ animal['Battery_status'] }} %
+
+                    </td>
+
+                {% elif animal['Battery_status']|int < 50 %}
+
+                    <td style="color:orange;">
+
+                        {{ animal['Battery_status'] }} %
+
+                    </td>
+
                 {% else %}
-                    <tr>
-                        <td colspan="10">No animals found for this breeder</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+
+                    <td style="color:green;">
+
+                        {{ animal['Battery_status'] }} %
+
+                    </td>
+
+                {% endif %}
+
+
+                <!-- Alert history -->
+
+                {% if animal['Animal_status']=="ALERTE" %}
+
+                    <td style="color:red;">
+
+                        ⚠ {{ animal['Aler_Hist'] }}
+
+                    </td>
+
+                {% else %}
+
+                    <td>
+
+                        {{ animal['Aler_Hist'] }}
+
+                    </td>
+
+                {% endif %}
+
+
+                <!-- Status -->
+
+                {% if animal['Animal_status']=="ACTIVE" %}
+
+                    <td style="color:green;font-weight:bold;">
+
+                        ACTIVE
+
+                    </td>
+
+                {% elif animal['Animal_status']=="ALERTE" %}
+
+                    <td style="color:red;font-weight:bold;">
+
+                        ALERTE
+
+                    </td>
+
+                {% elif animal['Animal_status']=="MORT" %}
+
+                    <td style="color:gray;font-weight:bold;">
+
+                        MORT
+
+                    </td>
+
+                {% else %}
+
+                    <td>
+
+                        {{ animal['Animal_status'] }}
+
+                    </td>
+
+                {% endif %}
+
+
+                <td>
+
+                    {{ animal.Last_Sync }}
+
+                </td>
+
+
+                <td>
+
+                    <a href="{{ url_for('animal_details',
+                                        mac=animal.MAC) }}"
+                       class="btn">
+
+                        Details
+
+                    </a>
+
+                </td>
+
+            </tr>
+
+        {% else %}
+
+            <tr>
+
+                <td colspan="12">
+
+                    No animals found.
+
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
 </div>
+
 {% endblock %}
