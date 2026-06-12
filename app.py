@@ -163,13 +163,17 @@ def animal_details(mac):
     for a in animals:
 
         if a['MAC'] == mac:
-
             animal = a
             break
 
     if animal is None:
-        flash("Animal not found")
-        return redirect(url_for('dashboard'))
+
+        flash('Animal not found')
+
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('eleveur_dashboard'))
 
     return render_template(
         'animal_details.html',
