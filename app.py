@@ -534,20 +534,68 @@ https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
             # ==========================
             else:
 
-                subject = "Duplicate registration attempt"
+    # Cas transfert après décès
+    if existing_animal['Animal_status'] == 'MORT':
 
-                body = f"""
-Animal MAC :
+        animals_sheet.update(
+            f"A{row_index}:M{row_index}",
+            [[
 
-{mac}
+                existing_animal['ID'],
+                mac,
+                animal['category'],
+                animal['gender'],
+                animal['Birth_date'],
+                animal['vaccines'],
+                animal['Latitude'],
+                animal['Longitude'],
+                animal['Battery_status'],
+                animal['Aler_Hist'],
+                'ACTIVE',
+                farmer_id,
+                str(datetime.now())
+
+            ]]
+        )
+
+        subject = "Animal transfer"
+
+        body = f"""
+Animal {mac}
+
+transferred to farmer {farmer_id}
+because previous status was MORT.
+"""
+
+        for admin_email in get_admin_emails():
+            send_email(admin_email, subject, body)
+
+    else:
+
+        subject = "Duplicate registration attempt"
+
+        body = f"""
+Animal {mac}
 
 already belongs to another farmer.
 """
 
-                for admin_email in get_admin_emails():
-                    send_email(admin_email, subject, body)
+        # email admin
+        for admin_email in get_admin_emails():
+            send_email(admin_email, subject, body)
 
-                continue
+        # email nouvel éleveur
+        farmer_email = get_farmer_email(farmer_id)
+
+        if farmer_email:
+
+            send_email(
+                farmer_email,
+                "Registration refused",
+                body
+            )
+
+        continue
 
             # ==========================
             # Historique des positions
