@@ -313,7 +313,6 @@ def position_history(mac):
         positions=positions
     )
 ##############################################################################################################################################
-```python
 @app.route('/admin/dashboard')
 def admin_dashboard():
 
