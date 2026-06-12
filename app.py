@@ -179,6 +179,50 @@ def animal_details(mac):
         'animal_details.html',
         animal=animal
     )
+@app.route('/position_history/<mac>')
+def position_history(mac):
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    animals = animals_sheet.get_all_records()
+
+    animal = None
+
+    for a in animals:
+
+        if a['MAC'] == mac:
+
+            animal = a
+            break
+
+    if animal is None:
+
+        flash('Animal not found')
+        return redirect(url_for('dashboard'))
+
+    positions = []
+
+    history = animal.get('Position_History', '')
+
+    if history:
+
+        for p in history.split(';'):
+
+            if '|' in p:
+
+                lat, lon = p.split('|')
+
+                positions.append({
+                    'lat': float(lat),
+                    'lon': float(lon)
+                })
+
+    return render_template(
+        'position_history.html',
+        animal=animal,
+        positions=positions
+    )
 ##############################################################################################################################################
 @app.route('/admin/dashboard')
 def admin_dashboard():
