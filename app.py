@@ -392,7 +392,7 @@ def process_request(request_id, action):
 
     if not req:
         flash('Request not found', 'danger')
-        return redirect(url_for('admin_requests'))
+        return redirect(url_for('Registration_requests'))
 
     if action == 'accept':
 
