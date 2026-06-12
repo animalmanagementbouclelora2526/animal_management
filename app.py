@@ -476,6 +476,7 @@ def eleveur_dashboard():
         'eleveur/dashboard.html',
         animals=animals
     )
+```python
 @app.route('/sync_animals', methods=['POST'])
 def sync_animals():
 
@@ -508,20 +509,18 @@ def sync_animals():
             for i, row in enumerate(animals, start=2):
 
                 if row['MAC'] == mac:
-
                     existing_animal = row
                     row_index = i
                     break
 
             # ==========================
-            # MAC inexistante → ajout
+            # NOUVEL ANIMAL
             # ==========================
             if existing_animal is None:
 
                 animals_sheet.append_row([
 
                     len(animals) + 1,
-
                     mac,
                     animal['category'],
                     animal['gender'],
@@ -537,10 +536,10 @@ def sync_animals():
 
                 ])
 
-            add_sync_to_cache(farmer_id,mac)
+                add_sync_to_cache(farmer_id, mac)
 
             # ==========================
-            # Même éleveur → mise à jour
+            # MEME ELEVEUR
             # ==========================
             elif str(existing_animal['Farmer_ID']) == str(farmer_id):
 
@@ -566,10 +565,14 @@ def sync_animals():
 
                     ]]
                 )
-            add_sync_to_cache(farmer_id,mac)
 
-                # Nouvelle alerte ?
-                if (previous_alert != animal['Aler_Hist']and animal['Aler_Hist'] != ""):
+                add_sync_to_cache(farmer_id, mac)
+
+                # Nouvelle alerte
+                if (
+                    previous_alert != animal['Aler_Hist']
+                    and animal['Aler_Hist'] != ""
+                ):
 
                     alerts_sheet.append_row([
 
@@ -582,104 +585,129 @@ def sync_animals():
 
                     ])
 
-                    email = get_farmer_email(farmer_id)
-
                     subject = "Animal Alert"
 
                     body = f"""
-                    Animal : {mac}
-                    Alert : {animal['Aler_Hist']}
-                    Position : https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
-                    Date : {datetime.now()}
-                    """
+Animal : {mac}
 
-                    if email:
-                        send_email(email, subject, body)
+Alert :
+{animal['Aler_Hist']}
+
+Battery :
+{animal['Battery_status']} %
+
+Position :
+https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
+
+Date :
+{datetime.now()}
+"""
+
+                    farmer_email = get_farmer_email(farmer_id)
+
+                    if farmer_email:
+                        send_email(
+                            farmer_email,
+                            subject,
+                            body
+                        )
 
                     for admin_email in get_admin_emails():
-                        send_email(admin_email, subject, body)
+                        send_email(
+                            admin_email,
+                            subject,
+                            body
+                        )
 
-        # ==========================
-        # Autre éleveur
             # ==========================
-else:
+            # AUTRE ELEVEUR
+            # ==========================
+            else:
 
-    # Transfert après décès
-    if existing_animal['Animal_status'] == 'MORT':
+                # Transfert après décès
+                if existing_animal['Animal_status'] == 'MORT':
 
-        animals_sheet.update(
-            f"A{row_index}:M{row_index}",
-            [[
-                existing_animal['ID'],
-                mac,
-                animal['category'],
-                animal['gender'],
-                animal['Birth_date'],
-                animal['vaccines'],
-                animal['Latitude'],
-                animal['Longitude'],
-                animal['Battery_status'],
-                animal['Aler_Hist'],
-                'ACTIVE',
-                farmer_id,
-                str(datetime.now())
-            ]]
-        )
+                    animals_sheet.update(
+                        f"A{row_index}:M{row_index}",
+                        [[
 
-        add_sync_to_cache(farmer_id,mac)
+                            existing_animal['ID'],
+                            mac,
+                            animal['category'],
+                            animal['gender'],
+                            animal['Birth_date'],
+                            animal['vaccines'],
+                            animal['Latitude'],
+                            animal['Longitude'],
+                            animal['Battery_status'],
+                            animal['Aler_Hist'],
+                            'ACTIVE',
+                            farmer_id,
+                            str(datetime.now())
 
-        subject = "Animal transfer"
+                        ]]
+                    )
 
-        body = f"""
+                    add_sync_to_cache(farmer_id, mac)
+
+                    subject = "Animal transfer"
+
+                    body = f"""
 Animal {mac}
 
 transferred to farmer {farmer_id}
+
 because previous status was MORT.
 """
 
-        for admin_email in get_admin_emails():
-            send_email(admin_email, subject, body)
+                    for admin_email in get_admin_emails():
+                        send_email(
+                            admin_email,
+                            subject,
+                            body
+                        )
 
-    else:
+                else:
 
-        subject = "Duplicate registration attempt"
+                    subject = "Duplicate registration attempt"
 
-        body = f"""
+                    body = f"""
 Animal {mac}
 
 already belongs to another farmer.
 """
 
-        # Email admin
-        for admin_email in get_admin_emails():
-            send_email(admin_email, subject, body)
+                    for admin_email in get_admin_emails():
+                        send_email(
+                            admin_email,
+                            subject,
+                            body
+                        )
 
-        # Email nouvel éleveur
-        farmer_email = get_farmer_email(farmer_id)
+                    farmer_email = get_farmer_email(farmer_id)
 
-        if farmer_email:
+                    if farmer_email:
 
-            send_email(
-                farmer_email,
-                "Registration refused",
-                body
-            )
+                        send_email(
+                            farmer_email,
+                            "Registration refused",
+                            body
+                        )
 
-        continue
-
-        positions_sheet.append_row([
-            len(positions_sheet.get_all_records()) + 1,
-            mac,
-            animal['Latitude'],
-            animal['Longitude'],
-            str(datetime.now())
-        ])
+                    continue
 
             # ==========================
-            # Historique des positions
+            # HISTORIQUE DES POSITIONS
             # ==========================
+            positions_sheet.append_row([
 
-            
+                len(positions_sheet.get_all_records()) + 1,
+                mac,
+                animal['Latitude'],
+                animal['Longitude'],
+                str(datetime.now())
+
+            ])
 
         return jsonify({
 
@@ -696,6 +724,8 @@ already belongs to another farmer.
             'message': str(e)
 
         }), 500
+```
+
 ##########################################################################################################################
 @app.route('/admin/breeder_animals/<int:breeder_id>')
 def breeder_animals(breeder_id):
