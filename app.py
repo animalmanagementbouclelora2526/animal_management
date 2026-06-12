@@ -29,6 +29,8 @@ spreadsheet = client.open("Animal_management")
 users_sheet = spreadsheet.worksheet("Users")
 requests_sheet = spreadsheet.worksheet("Registration_requests")
 animals_sheet = spreadsheet.worksheet("Animal")
+positions_sheet = spreadsheet.worksheet("positions_history")
+alerts_sheet = spreadsheet.worksheet("alerts_history")
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -65,6 +67,27 @@ def generate_password():
     characters = string.ascii_letters + string.digits + string.punctuation
     password = ''.join(random.choice(characters) for i in range(length))
     return password
+def get_admin_emails():
+
+    admins = []
+
+    for user in users_sheet.get_all_records():
+
+        if user['Role'] == 'admin':
+
+            admins.append(user['Email'])
+
+    return admins
+    
+def get_farmer_email(farmer_id):
+
+    for user in users_sheet.get_all_records():
+
+        if str(user['Eleveur_ID']) == str(farmer_id):
+
+            return user['Email']
+
+    return None
 
 @app.route('/')
 def index():
@@ -185,38 +208,34 @@ def position_history(mac):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    animals = animals_sheet.get_all_records()
-
     animal = None
 
-    for a in animals:
+    for a in animals_sheet.get_all_records():
 
         if a['MAC'] == mac:
-
             animal = a
             break
 
     if animal is None:
 
         flash('Animal not found')
-        return redirect(url_for('dashboard'))
+
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('eleveur_dashboard'))
 
     positions = []
 
-    history = animal.get('Position_History', '')
+    for row in positions_sheet.get_all_records():
 
-    if history:
+        if row['MAC'] == mac:
 
-        for p in history.split(';'):
-
-            if '|' in p:
-
-                lat, lon = p.split('|')
-
-                positions.append({
-                    'lat': float(lat),
-                    'lon': float(lon)
-                })
+            positions.append({
+                'lat': float(row['Latitude']),
+                'lon': float(row['Longitude']),
+                'date': row['Date']
+            })
 
     return render_template(
         'position_history.html',
@@ -397,7 +416,7 @@ def sync_animals():
         }), 401
 
     data = request.json
-    eleveur_id = session['user_id']
+    farmer_id = session['user_id']
 
     if not data or 'animals' not in data:
         return jsonify({
@@ -407,34 +426,161 @@ def sync_animals():
 
     try:
 
+        animals = animals_sheet.get_all_records()
+
         for animal in data['animals']:
 
-            animals_sheet.append_row([
-                len(animals_sheet.get_all_records()) + 1,
-                animal['mac'],
-                animal['category'],
-                animal['gender'],
-                animal['Birth_date'],
-                animal['vaccines'],
+            mac = animal['mac']
+
+            existing_animal = None
+            row_index = None
+
+            for i, row in enumerate(animals, start=2):
+
+                if row['MAC'] == mac:
+
+                    existing_animal = row
+                    row_index = i
+                    break
+
+            # ==========================
+            # MAC inexistante → ajout
+            # ==========================
+            if existing_animal is None:
+
+                animals_sheet.append_row([
+
+                    len(animals) + 1,
+
+                    mac,
+                    animal['category'],
+                    animal['gender'],
+                    animal['Birth_date'],
+                    animal['vaccines'],
+                    animal['Latitude'],
+                    animal['Longitude'],
+                    animal['Battery_status'],
+                    animal['Aler_Hist'],
+                    animal['Animal_status'],
+                    farmer_id,
+                    str(datetime.now())
+
+                ])
+
+            # ==========================
+            # Même éleveur → mise à jour
+            # ==========================
+            elif str(existing_animal['Farmer_ID']) == str(farmer_id):
+
+                previous_alert = existing_animal['Aler_Hist']
+
+                animals_sheet.update(
+                    f"A{row_index}:M{row_index}",
+                    [[
+
+                        existing_animal['ID'],
+                        mac,
+                        animal['category'],
+                        animal['gender'],
+                        animal['Birth_date'],
+                        animal['vaccines'],
+                        animal['Latitude'],
+                        animal['Longitude'],
+                        animal['Battery_status'],
+                        animal['Aler_Hist'],
+                        animal['Animal_status'],
+                        farmer_id,
+                        str(datetime.now())
+
+                    ]]
+                )
+
+                # Nouvelle alerte ?
+                if previous_alert != animal['Aler_Hist']:
+
+                    alerts_sheet.append_row([
+
+                        len(alerts_sheet.get_all_records()) + 1,
+                        mac,
+                        animal['Aler_Hist'],
+                        animal['Latitude'],
+                        animal['Longitude'],
+                        str(datetime.now())
+
+                    ])
+
+                    email = get_farmer_email(farmer_id)
+
+                    subject = "Animal Alert"
+
+                    body = f"""
+Animal : {mac}
+
+Alert :
+{animal['Aler_Hist']}
+
+Position :
+https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
+"""
+
+                    if email:
+                        send_email(email, subject, body)
+
+                    for admin_email in get_admin_emails():
+                        send_email(admin_email, subject, body)
+
+            # ==========================
+            # Autre éleveur
+            # ==========================
+            else:
+
+                subject = "Duplicate registration attempt"
+
+                body = f"""
+Animal MAC :
+
+{mac}
+
+already belongs to another farmer.
+"""
+
+                for admin_email in get_admin_emails():
+                    send_email(admin_email, subject, body)
+
+                continue
+
+            # ==========================
+            # Historique des positions
+            # ==========================
+
+            positions_sheet.append_row([
+
+                len(positions_sheet.get_all_records()) + 1,
+
+                mac,
+
                 animal['Latitude'],
+
                 animal['Longitude'],
-                animal['Battery_status'],
-                animal['Aler_Hist'],
-                animal['Animal_status'],
-                eleveur_id,
+
                 str(datetime.now())
+
             ])
 
         return jsonify({
+
             'status': 'success',
-            'message': 'Animals synchronized successfully'
+            'message': 'Synchronization completed'
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'status': 'error',
             'message': str(e)
+
         }), 500
 ##########################################################################################################################
 @app.route('/admin/breeder_animals/<int:breeder_id>')
