@@ -476,7 +476,7 @@ def eleveur_dashboard():
         'eleveur/dashboard.html',
         animals=animals
     )
-```python
+
 @app.route('/sync_animals', methods=['POST'])
 def sync_animals():
 
@@ -724,7 +724,7 @@ already belongs to another farmer.
             'message': str(e)
 
         }), 500
-```
+
 
 ##########################################################################################################################
 @app.route('/admin/breeder_animals/<int:breeder_id>')
