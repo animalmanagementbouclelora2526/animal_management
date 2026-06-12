@@ -49,6 +49,14 @@
                 </a>
             </td>
         </tr>
+        <tr>
+            <th>Latitude</th>
+            <td>{{ animal.Latitude }}</td>
+        </tr>
+        <tr>
+            <th>Longitude</th>
+            <td>{{ animal.Longitude }}</td>
+        </tr>
 
         <tr>
             <th>Battery Status</th>
@@ -129,6 +137,11 @@
         View Position History
 
     </a>
+                <br><br>
+                <a href="{{ url_for('dashboard') }}"
+                    class="btn">
+                    Back to Dashboard
+                </a>
 
 </div>
 
