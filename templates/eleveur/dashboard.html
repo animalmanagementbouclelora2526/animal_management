@@ -31,6 +31,7 @@
                     <th>Alert History</th>
                     <th>Animal Status</th>
                     <th>Last Sync</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
 
@@ -112,13 +113,19 @@
 
 
                     <td>{{ animal.Last_Sync }}</td>
+                        <td>
+                            <a href="{{ url_for('animal_details', mac=animal.MAC) }}"
+                                class="btn">
+                                Details
+                            </a>
+                        </td>
 
                 </tr>
 
             {% else %}
 
                 <tr>
-                    <td colspan="11">
+                    <td colspan="12">
                         No animals found. Please synchronize with your LoRa gateway.
                     </td>
                 </tr>
