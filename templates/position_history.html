@@ -1,1 +1,53 @@
+{% extends "base.html" %}
 
+{% block content %}
+
+<h2>Position History - {{ animal.MAC }}</h2>
+
+<div id="map" style="height:600px;"></div>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+var positions = {{ positions|tojson }};
+
+if (positions.length > 0) {
+
+    var map = L.map('map').setView(
+        [positions[0].lat, positions[0].lon],
+        13
+    );
+
+    L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            maxZoom: 19
+        }
+    ).addTo(map);
+
+    var points = [];
+
+    positions.forEach(function(pos, index){
+
+        points.push([pos.lat, pos.lon]);
+
+        var marker = L.marker([pos.lat, pos.lon])
+            .addTo(map);
+
+        marker.bindPopup(
+            "Point " + (index+1)
+        );
+
+    });
+
+    L.polyline(points).addTo(map);
+
+}
+
+</script>
+
+{% endblock %}
