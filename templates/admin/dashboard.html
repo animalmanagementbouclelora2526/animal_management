@@ -19,6 +19,7 @@
                     <th>Email</th>
                     <th>Animals Count</th>
                     <th>Animals In Alert</th>
+                    <th>Low Battery</th>
                     <th>Last Sync</th>
                     <th>Actions</th>
                 </tr>
@@ -59,6 +60,18 @@
                             </span>
                         {% endif %}
 
+                    </td>
+
+                    <td>
+                        {% if eleveur.low_battery_count > 0 %}
+                        <span style="color:orange;font-weight:bold;">
+                            🔋 {{ eleveur.low_battery_count }}
+                        </span>
+                        {% else %}
+                        <span style="color:green;">
+                            0
+                        </span>
+                        {% endif %}
                     </td>
 
                     <td>
