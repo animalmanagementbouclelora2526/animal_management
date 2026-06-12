@@ -313,60 +313,67 @@ def position_history(mac):
         positions=positions
     )
 ##############################################################################################################################################
+```python
 @app.route('/admin/dashboard')
 def admin_dashboard():
+
     if 'user_id' not in session or session['role'] != 'admin':
+
         return redirect(url_for('login'))
 
     users = users_sheet.get_all_records()
-    print("=== USERS ===")
-    for user in users[:3]:
-        print(user)
     animals = animals_sheet.get_all_records()
-    print("=== ANIMALS ===")
-    for animal in animals[:3]:
-        print(animal)
 
     eleveurs = []
 
     for user in users:
-        if user['Role'] == 'éleveur':
 
-            animal_count = 0
-            last_sync = ""
+        if user['Role'] != 'éleveur':
+            continue
 
-            for animal in animals:
+        animal_count = 0
+        alert_count = 0
+        low_battery_count = 0
+        last_sync = None
 
-                if str(animal.get('Farmer_ID', '')).strip() == str(user.get('Eleveur_ID', '')):
-                    animal_count += 1
-                    last_sync = animal.get('Last_Sync', '')
+        for animal in animals:
 
-            eleveurs.append({
-                'Eleveur_ID': user.get('Eleveur_ID', ''),
-                'Username': user.get('Username', ''),
-                'Email': user.get('Email', ''),
-                'animal_count': animal_count,
-                'last_sync': last_sync
-            })
+            if str(animal['Farmer_ID']) == str(user['Eleveur_ID']):
+
+                animal_count += 1
+
+                # dernière synchronisation
+                if animal['Last_Sync'] != '':
+                    if last_sync is None or str(animal['Last_Sync']) > str(last_sync):
+                        last_sync = animal['Last_Sync']
+
+                # animal en alerte
+                if str(animal['Animal_status']).upper() == "ALERTE":
+                    alert_count += 1
+
+                # batterie faible
+                try:
+                    if int(animal['Battery_status']) < 20:
+                        low_battery_count += 1
+                except:
+                    pass
+
+        eleveurs.append({
+
+            'Eleveur_ID': user['Eleveur_ID'],
+            'Username': user['Username'],
+            'Email': user['Email'],
+            'animal_count': animal_count,
+            'alert_count': alert_count,
+            'low_battery_count': low_battery_count,
+            'last_sync': last_sync
+
+        })
 
     return render_template(
         'admin/dashboard.html',
         eleveurs=eleveurs
     )
-@app.route('/admin/requests')
-def admin_requests():
-    if 'user_id' not in session or session['role'] != 'admin':
-        return redirect(url_for('login'))
-
-    requests = []
-
-    all_requests = requests_sheet.get_all_records()
-
-    for req in all_requests:
-        if req['Status'] == 'en attente':
-            requests.append(req)
-
-    return render_template('admin/requests.html', requests=requests)
 
 @app.route('/admin/process_request/<int:request_id>/<action>')
 def process_request(request_id, action):
