@@ -18,6 +18,7 @@ SCOPES = [
 import json
 import os
 from google.oauth2.service_account import Credentials
+import threading
 
 info = json.loads(os.environ["GOOGLE_CREDS"])
 
@@ -41,6 +42,9 @@ EMAIL_ADDRESS = 'ahmed.hadji2219@gmail.com'
 EMAIL_PASSWORD = 'ussi gxpf jpax baxy'
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
+sync_cache = {}
+sync_timer = {}
+
 
 def send_email(to_email, subject, body):
     try:
@@ -88,6 +92,72 @@ def get_farmer_email(farmer_id):
             return user['Email']
 
     return None
+    
+def send_sync_summary(farmer_id):
+
+    if farmer_id not in sync_cache:
+        return
+
+    animals = sync_cache[farmer_id]
+
+    body = "The following animals have been synchronized:\n\n"
+
+    for i, mac in enumerate(animals):
+
+        body += f"{i+1}. {mac}\n"
+
+    # email éleveur
+    farmer_email = get_farmer_email(farmer_id)
+
+    if farmer_email:
+
+        send_email(
+            farmer_email,
+            "Synchronization Summary",
+            body
+        )
+
+    # email admins
+    for admin_email in get_admin_emails():
+
+        send_email(
+            admin_email,
+            f"Synchronization Summary Farmer {farmer_id}",
+            body
+        )
+
+    # vider le cache
+    del sync_cache[farmer_id]
+
+    if farmer_id in sync_timer:
+        del sync_timer[farmer_id]
+
+def add_sync_to_cache(farmer_id, mac):
+
+    if farmer_id not in sync_cache:
+
+        sync_cache[farmer_id] = []
+
+    # éviter les doublons
+    if mac not in sync_cache[farmer_id]:
+
+        sync_cache[farmer_id].append(mac)
+
+    # timer déjà lancé ?
+    if farmer_id in sync_timer:
+
+        return
+
+    timer = threading.Timer(
+        35,
+        send_sync_summary,
+        args=[farmer_id]
+    )
+
+    sync_timer[farmer_id] = timer
+
+    timer.start()
+
 
 @app.route('/')
 def index():
@@ -467,6 +537,8 @@ def sync_animals():
 
                 ])
 
+            add_sync_to_cache(farmer_id,mac)
+
             # ==========================
             # Même éleveur → mise à jour
             # ==========================
@@ -494,9 +566,10 @@ def sync_animals():
 
                     ]]
                 )
+            add_sync_to_cache(farmer_id,mac)
 
                 # Nouvelle alerte ?
-                if previous_alert != animal['Aler_Hist']:
+                if (previous_alert != animal['Aler_Hist']and animal['Aler_Hist'] != ""):
 
                     alerts_sheet.append_row([
 
@@ -514,14 +587,11 @@ def sync_animals():
                     subject = "Animal Alert"
 
                     body = f"""
-Animal : {mac}
-
-Alert :
-{animal['Aler_Hist']}
-
-Position :
-https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
-"""
+                    Animal : {mac}
+                    Alert : {animal['Aler_Hist']}
+                    Position : https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
+                    Date : {datetime.now()}
+                    """
 
                     if email:
                         send_email(email, subject, body)
@@ -529,18 +599,17 @@ https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
                     for admin_email in get_admin_emails():
                         send_email(admin_email, subject, body)
 
+        # ==========================
+        # Autre éleveur
             # ==========================
-            # Autre éleveur
-            # ==========================
-            else:
+else:
 
-    # Cas transfert après décès
+    # Transfert après décès
     if existing_animal['Animal_status'] == 'MORT':
 
         animals_sheet.update(
             f"A{row_index}:M{row_index}",
             [[
-
                 existing_animal['ID'],
                 mac,
                 animal['category'],
@@ -554,9 +623,10 @@ https://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}
                 'ACTIVE',
                 farmer_id,
                 str(datetime.now())
-
             ]]
         )
+
+        add_sync_to_cache(farmer_id,mac)
 
         subject = "Animal transfer"
 
@@ -580,11 +650,11 @@ Animal {mac}
 already belongs to another farmer.
 """
 
-        # email admin
+        # Email admin
         for admin_email in get_admin_emails():
             send_email(admin_email, subject, body)
 
-        # email nouvel éleveur
+        # Email nouvel éleveur
         farmer_email = get_farmer_email(farmer_id)
 
         if farmer_email:
@@ -597,23 +667,19 @@ already belongs to another farmer.
 
         continue
 
+        positions_sheet.append_row([
+            len(positions_sheet.get_all_records()) + 1,
+            mac,
+            animal['Latitude'],
+            animal['Longitude'],
+            str(datetime.now())
+        ])
+
             # ==========================
             # Historique des positions
             # ==========================
 
-            positions_sheet.append_row([
-
-                len(positions_sheet.get_all_records()) + 1,
-
-                mac,
-
-                animal['Latitude'],
-
-                animal['Longitude'],
-
-                str(datetime.now())
-
-            ])
+            
 
         return jsonify({
 
