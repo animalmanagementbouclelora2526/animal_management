@@ -461,7 +461,7 @@ Animal Management System Team
 
         flash('Request rejected', 'info')
 
-    return redirect(url_for('admin_requests'))
+    return redirect(url_for('register_request'))
 ###################################################################################################################
 @app.route('/eleveur/dashboard')
 def eleveur_dashboard():
