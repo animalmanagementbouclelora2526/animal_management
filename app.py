@@ -410,7 +410,7 @@ def process_request(request_id, action):
 
     if not req:
         flash('Request not found', 'danger')
-        return redirect(url_for('Registration_requests'))
+        return redirect(url_for('admin_requests'))
 
     if action == 'accept':
 
@@ -479,7 +479,7 @@ Animal Management System Team
 
         flash('Request rejected', 'info')
 
-    return redirect(url_for('register_request'))
+    return redirect(url_for('admin_requests'))
 ###################################################################################################################
 @app.route('/eleveur/dashboard')
 def eleveur_dashboard():
