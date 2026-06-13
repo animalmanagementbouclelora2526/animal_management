@@ -22,7 +22,7 @@
             <a href="{{ url_for('index') }}">Home</a>
             {% if session['role'] == 'admin' %}
                 <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('register_request') }}">Registration Requests</a>
+                <a href="{{ url_for('admin_requests') }}">Registration Requests</a>
             {% else %}
                 <a href="{{ url_for('eleveur_dashboard') }}">Dashboard</a>
             {% endif %}
