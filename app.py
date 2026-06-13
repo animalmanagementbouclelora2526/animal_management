@@ -389,7 +389,7 @@ def admin_requests():
             pending_requests.append(req)
 
     return render_template(
-        'requests.html',
+        'register.html',
         requests=pending_requests
     )
 @app.route('/admin/process_request/<int:request_id>/<action>')
