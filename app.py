@@ -161,6 +161,7 @@ def add_sync_to_cache(farmer_id, mac):
 
 @app.route('/')
 def index():
+    print("SESSION =", dict(session))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
