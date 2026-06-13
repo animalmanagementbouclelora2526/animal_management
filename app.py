@@ -373,7 +373,25 @@ def admin_dashboard():
         'admin/dashboard.html',
         eleveurs=eleveurs
     )
+@app.route('/admin/requests')
+def admin_requests():
 
+    if 'user_id' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+
+    requests = []
+
+    for req in requests_sheet.get_all_records():
+
+        # afficher uniquement les demandes en attente
+        if req['Status'] == 'en attente':
+
+            requests.append(req)
+
+    return render_template(
+        'requests.html',
+        requests=requests
+    )
 @app.route('/admin/process_request/<int:request_id>/<action>')
 def process_request(request_id, action):
     if 'user_id' not in session or session['role'] != 'admin':
