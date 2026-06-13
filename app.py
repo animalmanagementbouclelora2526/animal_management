@@ -441,7 +441,7 @@ def process_request(request_id, action):
             req['Email']
         ])
 
-        requests_sheet.update_cell(row_index, 7, 'accepté')
+        requests_sheet.update_cell(row_index, 6, 'accepté')
 
         subject = "Your Registration Has Been Approved"
 
@@ -466,7 +466,7 @@ Animal Management System Team
 
     elif action == 'reject':
 
-        requests_sheet.update_cell(row_index, 7, 'refusé')
+        requests_sheet.update_cell(row_index, 6, 'refusé')
 
         subject = "Your Registration Has Been Rejected"
 
