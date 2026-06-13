@@ -27,7 +27,13 @@
                             <td>{{ req.Card_number }}</td>
                             <td>{{ req.Request_date }}</td>
                             <td>
-                                <a href="{{ url_for('process_request', request_id=req.ID, action='accept') }}" class="btn btn-success">Accept</a>
+                                <form action="{{ url_for('process_request',request_id=req.ID,action='accept') }}"
+                                    method="post"
+                                    style="display:inline;">
+                                    <button type="submit" class="btn btn-success">
+                                        Accept
+                                    </button>
+                                </form>
                                 <a href="{{ url_for('process_request', request_id=req.ID, action='reject') }}" class="btn btn-danger">Reject</a>
                             </td>
                         </tr>
