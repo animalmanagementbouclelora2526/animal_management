@@ -459,6 +459,7 @@ Animal Management System Team
 
         try:
             send_email(req['Email'], subject, body)
+            print("Email envoyé avec succès")
         except Exception as e:
             print("Email error:", e)
 
@@ -479,7 +480,11 @@ Best regards,
 Animal Management System Team
 """
 
-        send_email(req['Email'], subject, body)
+        try:
+            send_email(req['Email'], subject, body)
+            print("Email envoyé avec succès")
+        except Exception as e:
+            print("ERREUR EMAIL:", str(e))
 
         flash('Request rejected', 'info')
 
