@@ -379,18 +379,18 @@ def admin_requests():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
-    requests = []
+    pending_requests = []
 
     for req in requests_sheet.get_all_records():
 
-        # afficher uniquement les demandes en attente
-        if req['Status'] == 'en attente':
+        status = str(req.get('Status', '')).strip().lower()
 
-            requests.append(req)
+        if status == 'en attente':
+            pending_requests.append(req)
 
     return render_template(
         'requests.html',
-        requests=requests
+        requests=pending_requests
     )
 @app.route('/admin/process_request/<int:request_id>/<action>')
 def process_request(request_id, action):
