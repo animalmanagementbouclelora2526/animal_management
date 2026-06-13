@@ -18,21 +18,26 @@
     </header>
     
     <nav>
-        {% if 'user_id' in session %}
+        <nav>
+
+    {% if 'user_id' in session %}
             <a href="{{ url_for('index') }}">Home</a>
-            {% if session['role'] == 'admin' %}
-                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('admin_requests') }}">Registration Requests</a>
-            {% else %}
-                <a href="{{ url_for('eleveur_dashboard') }}">Dashboard</a>
-            {% endif %}
-            <a href="{{ url_for('logout') }}">Logout</a>
-        {% else %}
-            <a href="{{ url_for('index') }}">Home</a>
-            <a href="{{ url_for('login') }}">Login</a>
-            <a href="{{ url_for('register_request') }}">Register</a>
+        {% if session['role'] == 'admin' %}
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('admin_requests') }}">Registration Requests</a>
+        {% elif session['role'] == 'éleveur' %}
+            <a href="{{ url_for('eleveur_dashboard') }}">Dashboard</a>
         {% endif %}
-    </nav>
+
+        <a href="{{ url_for('logout') }}">Logout</a>
+
+    {% else %}
+
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('register_request') }}">Register</a>
+
+    {% endif %}
+        </nav>
     
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
