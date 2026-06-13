@@ -27,7 +27,7 @@
                             <td>{{ req.Card_number }}</td>
                             <td>{{ req.Request_date }}</td>
                             <td>
-                                <a href="{{ url_for('process_request',request_id=req.ID,action='accept') }}">Accept</a>
+                                <a href="{{ url_for('process_request',request_id=req.ID,action='accept') }}" class="btn btn-danger">Accept</a>
                                 <a href="{{ url_for('process_request', request_id=req.ID, action='reject') }}" class="btn btn-danger">Reject</a>
                             </td>
                         </tr>
