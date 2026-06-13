@@ -347,7 +347,7 @@ def admin_dashboard():
                         last_sync = animal['Last_Sync']
 
                 # animal en alerte
-                if str(animal['Aler_Hist']).upper() == "ALERTE":
+                if str(animal['Aler_Hist']).strip().upper().startswith("ALERTE"):
                     alert_count += 1
 
                 # batterie faible
