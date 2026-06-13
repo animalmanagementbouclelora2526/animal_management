@@ -392,7 +392,7 @@ def admin_requests():
         'admin/requests.html',
         requests=pending_requests
     )
-@app.route('/admin/process_request/<int:request_id>/<action>')
+@app.route('/admin/process_request/<int:request_id>/<action>', methods=['GET', 'POST'])
 def process_request(request_id, action):
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
@@ -440,7 +440,7 @@ def process_request(request_id, action):
             req['Email']
         ])
 
-        requests_sheet.update_cell(row_index, 6, 'accepté')
+        requests_sheet.update_cell(row_index, 7, 'accepté')
 
         subject = "Your Registration Has Been Approved"
 
@@ -456,13 +456,16 @@ Best regards,
 Animal Management System Team
 """
 
-        send_email(req['Email'], subject, body)
+        try:
+            send_email(req['Email'], subject, body)
+        except Exception as e:
+            print("Email error:", e)
 
         flash('Request approved and user created', 'success')
 
     elif action == 'reject':
 
-        requests_sheet.update_cell(row_index, 6, 'refusé')
+        requests_sheet.update_cell(row_index, 7, 'refusé')
 
         subject = "Your Registration Has Been Rejected"
 
