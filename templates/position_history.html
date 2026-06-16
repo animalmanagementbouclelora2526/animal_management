@@ -2,21 +2,25 @@
 
 {% block content %}
 
-<h2>Position History - {{ animal.MAC }}</h2>
+<div class="card">
+    <h2 style="margin-bottom: 1.5rem;">Position History - {{ animal.MAC }}</h2>
+    
+    <div id="map" style="height: 600px; width: 100%;"></div>
+    
+    <div style="margin-top: 1.5rem;">
+        <a href="{{ url_for('animal_details', mac=animal.MAC) }}" class="btn btn-secondary">
+            Back to Details
+        </a>
+    </div>
+</div>
 
-<div id="map" style="height:600px;"></div>
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-
 var positions = {{ positions|tojson }};
 
 if (positions.length > 0) {
-
     var map = L.map('map').setView(
         [positions[0].lat, positions[0].lon],
         13
@@ -32,22 +36,14 @@ if (positions.length > 0) {
     var points = [];
 
     positions.forEach(function(pos, index){
-
         points.push([pos.lat, pos.lon]);
 
-        var marker = L.marker([pos.lat, pos.lon])
-            .addTo(map);
-
-        marker.bindPopup(
-            "Point " + (index+1)
-        );
-
+        var marker = L.marker([pos.lat, pos.lon]).addTo(map);
+        marker.bindPopup("Point " + (index + 1) + "<br><small>" + pos.date + "</small>");
     });
 
-    L.polyline(points).addTo(map);
-
+    L.polyline(points, {color: 'var(--accent)'}).addTo(map);
 }
-
 </script>
 
 {% endblock %}

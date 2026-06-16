@@ -20,12 +20,54 @@ import os
 from google.oauth2.service_account import Credentials
 import threading
 
-info = json.loads(os.environ["GOOGLE_CREDS"])
+# Load environment variables from .env file if it exists
+if os.path.exists(".env"):
+    try:
+        with open(".env", "r", encoding="utf-8") as f:
+            for line in f:
+                if "=" in line and not line.strip().startswith("#"):
+                    key, val = line.strip().split("=", 1)
+                    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                        val = val[1:-1]
+                    os.environ[key] = val
+    except Exception as e:
+        print(f"Warning: Failed to load .env file: {e}")
 
-creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+creds = None
+if "GOOGLE_CREDS" in os.environ:
+    try:
+        info = json.loads(os.environ["GOOGLE_CREDS"])
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    except Exception as e:
+        print(f"Warning: Failed to load GOOGLE_CREDS from environment: {e}")
+
+if not creds:
+    possible_files = ["credentials.json"]
+    try:
+        for f in os.listdir("."):
+            if f.endswith(".json") and f not in ["package.json", "package-lock.json", "vercel.json"] and f not in possible_files:
+                possible_files.append(f)
+    except Exception:
+        pass
+        
+    for cred_file in possible_files:
+        if os.path.exists(cred_file):
+            try:
+                creds = Credentials.from_service_account_file(cred_file, scopes=SCOPES)
+                print(f"Loaded Google Credentials from file: {cred_file}")
+                break
+            except Exception as e:
+                print(f"Warning: Found {cred_file} but failed to load: {e}")
+
+if not creds:
+    raise RuntimeError(
+        "Missing Google Credentials. Please set the GOOGLE_CREDS environment variable "
+        "(e.g. in the Render dashboard) or upload a 'credentials.json' file to the root directory."
+    )
 
 client = gspread.authorize(creds)
-spreadsheet = client.open("Animal_management")
+spreadsheet_id = os.environ.get("SPREADSHEET_ID", "1YkSZ26-iTuKCWEz4d_ZSm0qaufIhka5WpWp9cI1tVoo")
+spreadsheet = client.open_by_key(spreadsheet_id)
 
 users_sheet = spreadsheet.worksheet("Users")
 requests_sheet = spreadsheet.worksheet("Registration_requests")
@@ -65,6 +107,9 @@ def send_email(to_email, subject, body):
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
+
+def send_email_async(to_email, subject, body):
+    threading.Thread(target=send_email, args=(to_email, subject, body), daemon=True).start()
 
 def generate_password():
     length = 10
@@ -166,6 +211,15 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'user_id' in session:
+        if request.method == 'GET':
+            return render_template('login.html', show_logout_confirm=True)
+        else:
+            if session.get('role') == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('eleveur_dashboard'))
+
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -185,9 +239,14 @@ def login():
             print(f"User found: {user['Username']}, DB Password: {user['Password']}")
             
             # Check both hashed and plain text password
-            if (user['Password'].startswith('pbkdf2:') and 
-                check_password_hash(user['Password'], password)) or \
-                user['Password'] == password:
+            is_correct = False
+            if user['Password'].startswith(('pbkdf2:', 'scrypt:')):
+                try:
+                    is_correct = check_password_hash(user['Password'], password)
+                except Exception:
+                    pass
+            
+            if is_correct or user['Password'] == password:
                 
                 session['user_id'] = user['Eleveur_ID']
                 session['username'] = user['Username']
@@ -238,7 +297,7 @@ def register_request():
         body = f"A new registration request has been submitted:\n\nName: {name} {first_name}\nEmail: {email}\nCard Number: {card_number}"
         
         for email in admin_emails:
-            send_email(email, subject, body)
+            send_email_async(email, subject, body)
         
         flash('Your registration request has been submitted. You will receive an email once it is processed.', 'success')
         return redirect(url_for('index'))
@@ -300,7 +359,7 @@ def position_history(mac):
 
     for row in positions_sheet.get_all_records():
 
-        if row['MAC'] == mac:
+        if row.get('MAC') == mac or str(row.get('Animal_ID')) == str(animal.get('ID')):
 
             positions.append({
                 'lat': float(row['Latitude']),
@@ -415,8 +474,13 @@ def process_request(request_id, action):
 
     if action == 'accept':
 
-        username = req['First_name'][0].lower() + req['Name'].lower()
+        first_name_str = str(req.get('First_name', '')).strip().replace(" ", "")
+        name_str = str(req.get('Name', '')).strip().replace(" ", "")
+        first_char = first_name_str[0].lower() if first_name_str else ''
+        username = first_char + name_str.lower()
         password = generate_password()
+
+        print(f"\n========================================\n[KEY] BREEDER ACCOUNT CREATED (TESTING):\nUsername: {username}\nPassword: {password}\n========================================\n")
 
         users = users_sheet.get_all_records()
 
@@ -458,8 +522,8 @@ Animal Management System Team
 """
 
         try:
-            send_email(req['Email'], subject, body)
-            print("Email envoyé avec succès")
+            send_email_async(req['Email'], subject, body)
+            print("Email async send initiated")
         except Exception as e:
             print("Email error:", e)
 
@@ -481,8 +545,8 @@ Animal Management System Team
 """
 
         try:
-            send_email(req['Email'], subject, body)
-            print("Email envoyé avec succès")
+            send_email_async(req['Email'], subject, body)
+            print("Email async send initiated")
         except Exception as e:
             print("ERREUR EMAIL:", str(e))
 
@@ -571,12 +635,32 @@ def sync_animals():
 
                 add_sync_to_cache(farmer_id, mac)
 
+                # Send alert notification if new animal is synced with an active alert
+                if animal['Aler_Hist'] != "" and animal['Aler_Hist'] != "None":
+                    alerts_sheet.append_row([
+                        len(alerts_sheet.get_all_records()) + 1,
+                        mac,
+                        animal['Aler_Hist'],
+                        animal['Latitude'],
+                        animal['Longitude'],
+                        str(datetime.now())
+                    ])
+
+                    subject = "Animal Alert"
+                    body = f"Animal : {mac}\n\nAlert :\n{animal['Aler_Hist']}\n\nBattery :\n{animal['Battery_status']} %\n\nPosition :\nhttps://www.google.com/maps?q={animal['Latitude']},{animal['Longitude']}\n\nDate :\n{datetime.now()}\n"
+                    farmer_email = get_farmer_email(farmer_id)
+                    if farmer_email:
+                        send_email_async(farmer_email, subject, body)
+                    for admin_email in get_admin_emails():
+                        send_email_async(admin_email, subject, body)
+
             # ==========================
             # MEME ELEVEUR
             # ==========================
             elif str(existing_animal['Farmer_ID']) == str(farmer_id):
 
                 previous_alert = existing_animal['Aler_Hist']
+                previous_status = existing_animal['Animal_status']
 
                 animals_sheet.update(
                     f"A{row_index}:M{row_index}",
@@ -601,10 +685,21 @@ def sync_animals():
 
                 add_sync_to_cache(farmer_id, mac)
 
+                # Animal reported deceased (MORT)
+                if previous_status != 'MORT' and animal['Animal_status'] == 'MORT':
+                    subject = "Animal Reported Deceased (MORT)"
+                    body = f"Animal MAC {mac} has been reported as deceased (status changed to MORT) by breeder {farmer_id} on {datetime.now()}."
+                    farmer_email = get_farmer_email(farmer_id)
+                    if farmer_email:
+                        send_email_async(farmer_email, subject, body)
+                    for admin_email in get_admin_emails():
+                        send_email_async(admin_email, subject, body)
+
                 # Nouvelle alerte
                 if (
                     previous_alert != animal['Aler_Hist']
                     and animal['Aler_Hist'] != ""
+                    and animal['Aler_Hist'] != "None"
                 ):
 
                     alerts_sheet.append_row([
@@ -639,14 +734,14 @@ Date :
                     farmer_email = get_farmer_email(farmer_id)
 
                     if farmer_email:
-                        send_email(
+                        send_email_async(
                             farmer_email,
                             subject,
                             body
                         )
 
                     for admin_email in get_admin_emails():
-                        send_email(
+                        send_email_async(
                             admin_email,
                             subject,
                             body
@@ -656,14 +751,14 @@ Date :
             # AUTRE ELEVEUR
             # ==========================
             else:
+                previous_farmer_id = existing_animal['Farmer_ID']
+                previous_status = str(existing_animal.get('Animal_status', 'ACTIVE')).upper().strip()
 
-                # Transfert après décès
-                if existing_animal['Animal_status'] == 'MORT':
-
+                if previous_status in ['MORT', 'VENDU']:
+                    # Valid transfer or sale: update sheet
                     animals_sheet.update(
                         f"A{row_index}:M{row_index}",
                         [[
-
                             existing_animal['ID'],
                             mac,
                             animal['category'],
@@ -677,68 +772,77 @@ Date :
                             'ACTIVE',
                             farmer_id,
                             str(datetime.now())
-
                         ]]
                     )
 
                     add_sync_to_cache(farmer_id, mac)
 
-                    subject = "Animal transfer"
-
-                    body = f"""
+                    if previous_status == 'MORT':
+                        subject = "Animal transfer"
+                        body = f"""
 Animal {mac}
 
 transferred to farmer {farmer_id}
 
 because previous status was MORT.
 """
+                        for admin_email in get_admin_emails():
+                            send_email_async(admin_email, subject, body)
 
-                    for admin_email in get_admin_emails():
-                        send_email(
-                            admin_email,
-                            subject,
-                            body
-                        )
+                        farmer_email = get_farmer_email(farmer_id)
+                        if farmer_email:
+                            send_email_async(farmer_email, subject, body)
 
-                else:
-
-                    subject = "Duplicate registration attempt"
-
-                    body = f"""
-Animal {mac}
-
-already belongs to another farmer.
+                        prev_farmer_email = get_farmer_email(previous_farmer_id)
+                        if prev_farmer_email:
+                            send_email_async(prev_farmer_email, subject, body)
+                    else:
+                        # Sale (VENDU) - owner changed for same animal and previous status was VENDU
+                        subject = "Animal Sale (VENDU)"
+                        body = f"""
+Animal {mac} has been sold and ownership transferred.
+Previous Breeder: {previous_farmer_id}
+New Breeder: {farmer_id}
+Date: {datetime.now()}
 """
+                        for admin_email in get_admin_emails():
+                            send_email_async(admin_email, subject, body)
 
+                        new_farmer_email = get_farmer_email(farmer_id)
+                        if new_farmer_email:
+                            send_email_async(new_farmer_email, "Animal Purchased (VENDU)", body)
+
+                        prev_farmer_email = get_farmer_email(previous_farmer_id)
+                        if prev_farmer_email:
+                            send_email_async(prev_farmer_email, "Animal Sold (VENDU)", body)
+                else:
+                    # Duplicate registration attempt: Owner status is neither MORT nor VENDU.
+                    # Send warning to admin, but do NOT update sheet and do NOT notify breeders of transfer.
+                    subject = "Duplicate Registration Attempt"
+                    body = f"""
+Breeder {farmer_id} attempted to register MAC {mac},
+which is already registered to Breeder {previous_farmer_id}.
+Previous Animal Status: {existing_animal['Animal_status']}
+Date: {datetime.now()}
+"""
                     for admin_email in get_admin_emails():
-                        send_email(
-                            admin_email,
-                            subject,
-                            body
-                        )
-
-                    farmer_email = get_farmer_email(farmer_id)
-
-                    if farmer_email:
-
-                        send_email(
-                            farmer_email,
-                            "Registration refused",
-                            body
-                        )
-
+                        send_email_async(admin_email, subject, body)
+                    
+                    # Skip positions history update for this animal since it's a duplicate attempt
                     continue
 
             # ==========================
             # HISTORIQUE DES POSITIONS
             # ==========================
+            animal_id = existing_animal['ID'] if existing_animal else (len(animals) + 1)
             positions_sheet.append_row([
 
                 len(positions_sheet.get_all_records()) + 1,
                 mac,
                 animal['Latitude'],
                 animal['Longitude'],
-                str(datetime.now())
+                str(datetime.now()),
+                animal_id
 
             ])
 
@@ -868,6 +972,13 @@ Animal Management System Team"""
 
         for eleveur in eleveurs:
             send_email(eleveur['Email'], subject, body)
+
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True) 

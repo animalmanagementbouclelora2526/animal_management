@@ -3,3 +3,7 @@ venv/
 __pycache__/
 *.pyc
 .env
+.vercel
+livestocktrack.zip
+livestocktrack/
+animaltracker-499320-00fbcd6af04e.json

@@ -6,8 +6,16 @@
         <p>As part of the 2025/2026 Start-up Project: Intelligent system, using LoRa technology, for the census and remote monitoring of livestock.</p>
         
         <div class="actions">
-            <a href="{{ url_for('login') }}" class="btn">Login</a>
-            <a href="{{ url_for('register_request') }}" class="btn">Request Registration</a>
+            {% if 'user_id' in session %}
+                {% if session['role'] == 'admin' %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn">Go to Admin Dashboard</a>
+                {% else %}
+                    <a href="{{ url_for('eleveur_dashboard') }}" class="btn">Go to Breeder Dashboard</a>
+                {% endif %}
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-secondary">Login</a>
+                <a href="{{ url_for('register_request') }}" class="btn">Request Registration</a>
+            {% endif %}
         </div>
     </div>
-{% endblock %}           
+{% endblock %}

@@ -6,184 +6,99 @@
 
     <h2>Animals of {{ breeder.Username }}</h2>
 
-    <table>
-
-        <thead>
-
-            <tr>
-
-                <th>ID</th>
-                <th>LoRa Tag</th>
-                <th>Category</th>
-                <th>Gender</th>
-                <th>Birth Date</th>
-                <th>Vaccines</th>
-                <th>Current Position</th>
-                <th>Battery Status</th>
-                <th>Alert History</th>
-                <th>Animal Status</th>
-                <th>Last Sync</th>
-                <th>Actions</th>
-
-            </tr>
-
-        </thead>
-
-        <tbody>
-
-        {% for animal in animals %}
-
-            <tr>
-
-                <td>{{ animal.ID }}</td>
-
-                <td>{{ animal.MAC }}</td>
-
-                <td>{{ animal.Category }}</td>
-
-                <td>{{ animal.Gender }}</td>
-
-                <td>{{ animal.Birth_date }}</td>
-
-                <td>{{ animal.Vaccines }}</td>
-
-                <td>
-
-                    <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
-                       target="_blank">
-
-                        View Position
-
-                    </a>
-
-                </td>
-
-
-                <!-- Battery -->
-
-                {% if animal['Battery_status']|int < 20 %}
-
-                    <td style="color:red;font-weight:bold;">
-
-                        {{ animal['Battery_status'] }} %
-
-                    </td>
-
-                {% elif animal['Battery_status']|int < 50 %}
-
-                    <td style="color:orange;">
-
-                        {{ animal['Battery_status'] }} %
-
-                    </td>
-
-                {% else %}
-
-                    <td style="color:green;">
-
-                        {{ animal['Battery_status'] }} %
-
-                    </td>
-
-                {% endif %}
-
-
-                <!-- Alert history -->
-
-                {% if animal['Animal_status']=="ALERTE" %}
-
-                    <td style="color:red;">
-
-                        ⚠ {{ animal['Aler_Hist'] }}
-
-                    </td>
-
-                {% else %}
-
+    <div class="animals-list">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>LoRa Tag</th>
+                    <th>Category</th>
+                    <th>Gender</th>
+                    <th>Birth Date</th>
+                    <th>Vaccines</th>
+                    <th>Current Position</th>
+                    <th>Battery Status</th>
+                    <th>Alert History</th>
+                    <th>Animal Status</th>
+                    <th>Last Sync</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for animal in animals %}
+                <tr>
+                    <td>{{ animal.ID }}</td>
+                    <td style="font-family: monospace; font-weight: 600; font-size: 0.9rem; color: var(--primary);">{{ animal.MAC }}</td>
+                    <td>{{ animal.Category }}</td>
+                    <td>{{ animal.Gender }}</td>
+                    <td>{{ animal.Birth_date }}</td>
+                    <td>{{ animal.Vaccines }}</td>
                     <td>
-
-                        {{ animal['Aler_Hist'] }}
-
+                        <a href="https://www.google.com/maps?q={{ animal.Latitude }},{{ animal.Longitude }}"
+                           target="_blank" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            View Position
+                        </a>
                     </td>
-
-                {% endif %}
-
-
-                <!-- Status -->
-
-                {% if animal['Animal_status']=="ACTIVE" %}
-
-                    <td style="color:green;font-weight:bold;">
-
-                        ACTIVE
-
-                    </td>
-
-                {% elif animal['Animal_status']=="ALERTE" %}
-
-                    <td style="color:red;font-weight:bold;">
-
-                        ALERTE
-
-                    </td>
-
-                {% elif animal['Animal_status']=="MORT" %}
-
-                    <td style="color:gray;font-weight:bold;">
-
-                        MORT
-
-                    </td>
-
-                {% else %}
-
+    
+                    <!-- Battery -->
+                    {% if animal['Battery_status']|int < 20 %}
+                        <td class="battery-low">
+                            🔋 {{ animal['Battery_status'] }} %
+                        </td>
+                    {% elif animal['Battery_status']|int < 50 %}
+                        <td class="battery-medium">
+                            🔋 {{ animal['Battery_status'] }} %
+                        </td>
+                    {% else %}
+                        <td class="battery-full">
+                            🔋 {{ animal['Battery_status'] }} %
+                        </td>
+                    {% endif %}
+    
+                    <!-- Alert history -->
+                    {% if animal['Animal_status'] == "ALERTE" %}
+                        <td class="status-alert" style="border-radius: var(--radius-sm);">
+                            ⚠ {{ animal['Aler_Hist'] }}
+                        </td>
+                    {% else %}
+                        <td>
+                            {{ animal['Aler_Hist'] }}
+                        </td>
+                    {% endif %}
+    
+                    <!-- Status -->
                     <td>
-
-                        {{ animal['Animal_status'] }}
-
+                        {% if animal['Animal_status'] == "ACTIVE" %}
+                            <span class="status-badge status-active">ACTIVE</span>
+                        {% elif animal['Animal_status'] == "ALERTE" %}
+                            <span class="status-badge status-alert">ALERTE</span>
+                        {% elif animal['Animal_status'] == "MORT" %}
+                            <span class="status-badge status-dead">MORT</span>
+                        {% else %}
+                            <span class="status-badge">{{ animal['Animal_status'] }}</span>
+                        {% endif %}
                     </td>
-
-                {% endif %}
-
-
-                <td>
-
-                    {{ animal.Last_Sync }}
-
-                </td>
-
-
-                <td>
-
-                    <a href="{{ url_for('animal_details',
-                                        mac=animal.MAC) }}"
-                       class="btn">
-
-                        Details
-
-                    </a>
-
-                </td>
-
-            </tr>
-
-        {% else %}
-
-            <tr>
-
-                <td colspan="12">
-
-                    No animals found.
-
-                </td>
-
-            </tr>
-
-        {% endfor %}
-
-        </tbody>
-
-    </table>
+    
+                    <td>
+                        {{ animal.Last_Sync }}
+                    </td>
+    
+                    <td>
+                        <a href="{{ url_for('animal_details', mac=animal.MAC) }}" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No animals found.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
 </div>
 

@@ -1,9 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="login-form">
-        <h2>Login</h2>
-        <form method="POST" action="{{ url_for('login') }}">
+    <div class="login-form" id="loginForm"
+         data-logout-url="{{ url_for('logout') }}"
+         data-admin-dashboard-url="{{ url_for('admin_dashboard') }}"
+         data-eleveur-dashboard-url="{{ url_for('eleveur_dashboard') }}"
+         data-user-role="{{ session.get('role', '') }}">
+        <div class="login-logo-container" style="text-align: center; margin-bottom: 1.5rem;">
+            <img src="{{ url_for('static', filename='images/university_logo.png') }}" alt="University Logo" class="login-logo" style="height: 120px; width: auto; object-fit: contain; background-color: white; padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+        </div>
+        <h2 style="text-align: center; margin-bottom: 2rem;">Login</h2>
+        <form method="POST" action="{{ url_for('login') }}" class="spinner-form">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>
@@ -12,7 +19,29 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn" style="width: 100%; justify-content: center; margin-top: 1rem;">Login</button>
         </form>
     </div>
-{% endblock %}        
+
+    {% if show_logout_confirm %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('loginForm');
+            var logoutUrl = container.getAttribute('data-logout-url');
+            var adminUrl = container.getAttribute('data-admin-dashboard-url');
+            var eleveurUrl = container.getAttribute('data-eleveur-dashboard-url');
+            var userRole = container.getAttribute('data-user-role');
+
+            if (confirm("You are already logged in. Do you want to log out?")) {
+                window.location.href = logoutUrl;
+            } else {
+                if (userRole === 'admin') {
+                    window.location.href = adminUrl;
+                } else {
+                    window.location.href = eleveurUrl;
+                }
+            }
+        });
+    </script>
+    {% endif %}
+{% endblock %}

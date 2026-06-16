@@ -1,0 +1,396 @@
+#include <SPI.h>
+#include <LoRa.h>
+#include <WiFi.h>
+#include <TinyGPS++.h>
+#include <Wire.h>
+#include <AESLib.h>
+#undef SUCCESS
+#include <XPowersLib.h>
+#include <XPowersLib_Version.h>
+
+// ===== CONFIG =====
+#define NODE_ID 1
+#define PASSWORD "1234"
+
+// ===== PMU =====
+XPowersAXP2101 PMU;
+
+// ===== GPS =====
+TinyGPSPlus gps;
+HardwareSerial GPSserial(2);
+#define GPS_RX 34
+#define GPS_TX 12
+
+// ===== LoRa =====
+#define LORA_SCK   5
+#define LORA_MISO  19
+#define LORA_MOSI  27
+#define LORA_SS    18
+#define LORA_RST   23
+#define LORA_DIO0  26
+
+// ===== TAMPER =====
+#define TAMPER_PIN 14
+
+// ===== LEDS =====
+#define LED_RED    25
+#define LED_ORANGE 4
+#define LED_GREEN  2
+
+AESLib aesLib;
+
+// ===== AES =====
+char aes_key[] = "BC12345678900000";
+byte aes_iv[16] = {0};
+
+String macAddress;
+
+byte cleartext[128];
+byte ciphertext[128];
+
+// ===== MODES =====
+bool syncMode = false;
+unsigned long syncStartTime = 0;
+unsigned long lastListen = 0;
+
+// ===== BATTERY =====
+float readBattery() {
+  return PMU.getBattVoltage() / 1000.0;
+}
+
+float readBatteryStable() {
+  float sum = 0;
+  for (int i = 0; i < 5; i++) {
+    sum += readBattery();
+    delay(10);
+  }
+  return sum / 5.0;
+}
+
+float batteryPercent(float voltage) {
+
+  float percent =
+    (voltage * 100.0f) / 4.2f;
+
+  percent = constrain(percent, 0.0f, 100.0f);
+
+  return percent;
+}
+
+// ===== AES ENCRYPT =====
+uint16_t encryptAES(String msg) {
+
+  byte iv[16] = {0};
+
+  memset(ciphertext, 0, sizeof(ciphertext));
+
+  msg.toCharArray(
+      (char*)cleartext,
+      sizeof(cleartext)
+  );
+
+  return aesLib.encrypt(
+      cleartext,
+      msg.length(),
+      (char*)ciphertext,
+      (byte*)aes_key,
+      128,
+      iv
+  );
+}
+
+// ===== SEND PACKET =====
+bool sendPacket(String payload) {
+
+  LoRa.idle();
+
+  uint16_t len = encryptAES(payload);
+
+  LoRa.beginPacket();
+  LoRa.write(ciphertext, len);
+  LoRa.endPacket();
+
+  Serial.println("📡 Envoi : " + payload);
+
+  LoRa.receive(); // IMPORTANT
+
+  unsigned long start = millis();
+
+  while (millis() - start < 10000) {
+
+    int packetSize = LoRa.parsePacket();
+
+    if (packetSize) {
+
+      String response = "";
+      while (LoRa.available()) response += (char)LoRa.read();
+
+      if (response ==  "ACK|" + WiFi.macAddress()) {
+        Serial.println("✅ ACK reçu");
+        return true;
+      }
+
+      if (response == "ACK_ALERT") {
+        Serial.println("🚨 ACK ALERT reçu");
+        return true;
+      }
+    }
+  }
+
+  Serial.println("❌ Pas de ACK");
+  return false;
+}
+
+// ===== RETRY SYSTEM =====
+bool sendWithRetry(String payload, int maxRetry = 3) {
+
+  for (int i = 0; i < maxRetry; i++) {
+
+    Serial.println("📡 Tentative " + String(i + 1));
+
+    if (sendPacket(payload)) return true;
+
+    delay(500 + random(0, 500));
+  }
+
+  Serial.println("❌ Échec définitif");
+  return false;
+}
+
+// ===== SYNC CHECK =====
+bool checkSyncRequest() {
+
+  int packetSize = LoRa.parsePacket();
+
+  if (packetSize) {
+    String msg = "";
+    while (LoRa.available()) msg += (char)LoRa.read();
+
+    if (msg == "DEMANDE") {
+      Serial.println("📢 SYNC reçu !");
+      return true;
+    }
+  }
+  return false;
+}
+
+// ===== SETUP =====
+void setup() {
+
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_STA);
+  delay(100);
+  macAddress = WiFi.macAddress();
+
+  GPSserial.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX);
+
+  pinMode(TAMPER_PIN, INPUT_PULLUP);
+
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_ORANGE, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+  
+  digitalWrite(LED_RED, LOW);
+  digitalWrite(LED_ORANGE, LOW);
+  digitalWrite(LED_GREEN, LOW);
+
+  Wire.begin(21, 22);
+
+  PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, 21, 22);
+  PMU.enableBattDetection();
+
+  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_SS);
+  LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+
+  LoRa.begin(868E6);
+  LoRa.setSpreadingFactor(7);
+  LoRa.setSignalBandwidth(125E3);
+  LoRa.setCodingRate4(5);
+
+  LoRa.receive();
+
+  Serial.println("Emetteur prêt !");
+  float battery = readBatteryStable();
+  float batteryPct = batteryPercent(battery);
+  Serial.println(battery);
+  Serial.println(batteryPct);
+}
+
+// ===== LOOP =====
+void loop() {
+
+  // ===== GPS =====
+  while (GPSserial.available()) {
+    gps.encode(GPSserial.read());
+  }
+
+  float battery = readBatteryStable();
+  float batteryPct = batteryPercent(battery);
+
+  // ===== TAMPER =====
+  bool tamper = (digitalRead(TAMPER_PIN) == HIGH);
+  static bool alertSent = false;
+
+  // ===== LED =====
+  if (tamper) {
+    digitalWrite(LED_RED, HIGH);
+    digitalWrite(LED_ORANGE, LOW);
+    digitalWrite(LED_GREEN, LOW);
+  }
+  else if (battery < 3.0) {
+    digitalWrite(LED_RED, LOW);
+    digitalWrite(LED_ORANGE, HIGH);
+    digitalWrite(LED_GREEN, LOW);
+  }
+  else {
+    digitalWrite(LED_RED, LOW);
+    digitalWrite(LED_ORANGE, LOW);
+    digitalWrite(LED_GREEN, HIGH);
+  }
+
+  // =====================================================
+  // ECOUTE LORA PERMANENTE
+  // =====================================================
+
+  int packetSize = LoRa.parsePacket();
+
+  if (packetSize) {
+
+    String msg = "";
+
+    while (LoRa.available()) {
+      msg += (char)LoRa.read();
+    }
+
+    Serial.println("Reçu : " + msg);
+
+    if (msg == "DEMANDE") {
+
+      Serial.println("📢 SYNC reçu");
+
+      syncMode = true;
+      syncStartTime = millis();
+    }
+  }
+
+  // =====================================================
+  // MODE SYNC
+  // =====================================================
+
+  if (syncMode) {
+
+    static bool syncSent = false;
+
+    const unsigned long T = 300;   // créneau TDMA
+    unsigned long nodeOffset = NODE_ID * T;
+
+    unsigned long elapsed = millis() - syncStartTime;
+
+    // sécurité timeout
+    if (elapsed > 30000) {
+
+      syncMode = false;
+      syncSent = false;
+
+      Serial.println("Fin SYNC");
+      return;
+    }
+
+    if (!syncSent && elapsed >= nodeOffset) {
+
+     // if (gps.location.isValid()) {
+
+        String payload =
+          String(PASSWORD) + "|" +
+          macAddress + "|" +
+          String(gps.location.lat(), 6) + "|" +
+          String(gps.location.lng(), 6) + "|" +
+          String((int)batteryPct) + "|" +
+          "DEMANDE";
+
+        Serial.println("===== SYNC TDMA =====");
+        Serial.println("Offset : " + String(nodeOffset));
+
+        sendWithRetry(payload, 3);
+
+        syncSent = true;
+      }
+   // }
+
+    if (syncSent && elapsed > nodeOffset + 5000) {
+
+      syncMode = false;
+      syncSent = false;
+
+      Serial.println("SYNC terminé");
+    }
+
+    return;
+  }
+
+  // =====================================================
+  // ALERTE TAMPER
+  // =====================================================
+
+  if (tamper && !alertSent) {
+
+   // if (gps.location.isValid()) {
+
+      String payload =
+        String(PASSWORD) + "|" +
+        macAddress + "|" +
+        String(gps.location.lat(), 6) + "|" +
+        String(gps.location.lng(), 6) + "|" +
+        String((int)batteryPct) + "|" +
+        "ALERT";
+
+      Serial.println("🚨 ALERT");
+
+      if (sendWithRetry(payload, 5)) {
+        alertSent = true;
+      }
+    //}
+  }
+
+  if (!tamper) {
+    alertSent = false;
+  }
+
+  // =====================================================
+  // ENVOI PERIODIQUE TDMA
+  // =====================================================
+
+  static int lastHourSent = -1;
+
+ // if (gps.time.isValid() && gps.location.isValid()) {
+
+    int hour   = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
+
+    const unsigned long T = 300;
+    unsigned long nodeOffset = NODE_ID * T;
+
+    if (minute == 0 &&
+        second == 0 &&
+        hour != lastHourSent) {
+
+      lastHourSent = hour;
+
+      delay(nodeOffset);
+
+      String payload =
+        String(PASSWORD) + "|" +
+        macAddress + "|" +
+        String(gps.location.lat(), 6) + "|" +
+        String(gps.location.lng(), 6) + "|" +
+        String((int)batteryPct) + "|" +
+        "EnvoiPer";
+
+      Serial.println("===== ENVOI PERIODIQUE =====");
+
+      sendWithRetry(payload, 3);
+    }
+  }
+//}

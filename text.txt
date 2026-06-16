@@ -1,0 +1,35 @@
+the database used is googlesheet
+and i need to do some chnage and fix some errors
+FIRST :
+Email Notifications
+
+1. Registration Request
+
+A registration request can be:
+Approved
+Rejected
+An email notification is sent to the breeder informing them of the decision.
+
+2. Alert Case
+
+An email notification is sent to:
+The Administrator
+The Breeder
+
+3. Existing Tag (MAC) Registration
+
+If a Tag (MAC) is already registered to a breeder and another breeder attempts to register the same tag:
+An email notification is sent to the Administrator.
+
+4. Animal Death or Sale
+
+If an animal is reported as deceased or sold:
+An email notification is sent to:
+The Administrator
+The Breeder.
+
+
+ALSO WHEN I click for requtest and i send the data so the requset stored in the googlesheet but the screen still wiat like nothing happen 
+and when the admin approv refused the request its update in the googlesheet but the screen still wiat like nothing happen 
+
+
