@@ -1,4 +1,5 @@
-credentials.json
+*.json
+!vercel.json
 venv/
 __pycache__/
 *.pyc
@@ -6,4 +7,3 @@ __pycache__/
 .vercel
 livestocktrack.zip
 livestocktrack/
-animaltracker-499320-00fbcd6af04e.json

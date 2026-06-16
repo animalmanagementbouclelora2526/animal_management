@@ -10,7 +10,7 @@ SCOPES = [
 ]
 
 def run():
-    creds_path = "animaltracker-499320-00fbcd6af04e.json"
+    creds_path = "animaltracker-499320-0c2c76b1a2ff.json"
     if not os.path.exists(creds_path):
         print(f"Error: Credentials file '{creds_path}' not found.")
         return
