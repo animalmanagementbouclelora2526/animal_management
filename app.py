@@ -109,7 +109,12 @@ def send_email(to_email, subject, body):
         return False
 
 def send_email_async(to_email, subject, body):
-    threading.Thread(target=send_email, args=(to_email, subject, body), daemon=True).start()
+    if os.environ.get("VERCEL") == "1":
+        # On serverless platforms like Vercel, background threads are frozen when the request ends.
+        # We must send the email synchronously to guarantee delivery.
+        send_email(to_email, subject, body)
+    else:
+        threading.Thread(target=send_email, args=(to_email, subject, body), daemon=True).start()
 
 def generate_password():
     length = 10
